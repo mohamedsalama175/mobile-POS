@@ -1,0 +1,6 @@
+{
+  "name": "ScanPal Sales Module",
+  "description": "Rugged mobile sales operations app for Honeywell ScanPal EDA50 handhelds covering Sales Orders, Returns, Invoices, Credit Notes, and POS with offline hybrid sync and barcode scanning.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

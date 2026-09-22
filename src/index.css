@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #121417;
+  --color-surface: #1C1F24;
+  --color-surface-raised: #262A31;
+  --color-border: #333842;
+  --color-text-primary: #F5F6F7;
+  --color-text-secondary: #9AA1AC;
+  --color-accent: #3B82F6;
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-danger: #EF4444;
+}
+
+@layer base {
+  :root {
+    --font-arabic: 'Cairo', system-ui, -apple-system, sans-serif;
+    --font-latin: 'Inter', system-ui, -apple-system, sans-serif;
+
+    /* Industrial Dark Mode Palette CSS Variables */
+    --background: #121417;
+    --surface: #1C1F24;
+    --surface-raised: #262A31;
+    --border: #333842;
+    --text-primary: #F5F6F7;
+    --text-secondary: #9AA1AC;
+    --accent: #3B82F6;
+    --success: #22C55E;
+    --warning: #F59E0B;
+    --danger: #EF4444;
+  }
+
+  body {
+    font-family: var(--font-arabic), var(--font-latin);
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Custom scrollbars for rugged touch screen */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #333842;
+  border-radius: 4px;
+}
+
+/* Numeric tabular figures for data alignment */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Print styles for Bluetooth / ESC/POS thermal printing */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
