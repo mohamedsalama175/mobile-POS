@@ -5,6 +5,7 @@ import { soundService } from '../../services/sound';
 import { useApp } from '../../context/AppContext';
 import { LineItemEditor } from '../common/LineItemEditor';
 import { TotalsSummary } from '../common/TotalsSummary';
+import { calculateDocumentTotals, calculateLineTotal, DEFAULT_VAT_RATE, DEFAULT_WITHHOLDING_RATE } from '../../utils/pricing';
 import {
   Plus,
   Filter,
@@ -59,20 +60,22 @@ export const ReturnsScreen: React.FC = () => {
     const returnItems: LineItem[] = order.items.map((it) => ({
       ...it,
       maxReturnQty: it.enteredQty,
-      enteredQty: it.enteredQty, // default to returning all or user adjusts
-      lineTotal: Math.max(0, it.enteredQty * it.unitPrice - (it.discount || 0))
+      enteredQty: it.enteredQty,
+      lineTotal: calculateLineTotal(it.enteredQty, it.unitPrice, it.discount, it.discountType)
     }));
     setItems(returnItems);
   };
 
-  // Calculations (§3.6)
-  const grossTotal = items.reduce((sum, item) => sum + (item.enteredQty * item.unitPrice), 0);
-  const totalDiscount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
-  const totalAfterDiscount = Math.max(0, grossTotal - totalDiscount);
-  const totalTax = Number((totalAfterDiscount * 0.14).toFixed(2));
-  const totalAfterTax = Number((totalAfterDiscount + totalTax).toFixed(2));
-  const withholdingTax = Number((totalAfterDiscount * 0.01).toFixed(2));
-  const netDue = Number((totalAfterTax - withholdingTax).toFixed(2));
+  // Calculations (§3.6 & pricing utility)
+  const {
+    grossTotal,
+    totalDiscount,
+    totalAfterDiscount,
+    totalTax,
+    totalAfterTax,
+    withholdingTax,
+    netDue
+  } = calculateDocumentTotals(items, DEFAULT_VAT_RATE, true, DEFAULT_WITHHOLDING_RATE);
 
   const handleSave = () => {
     if (!selectedOrder) {
@@ -157,9 +160,18 @@ export const ReturnsScreen: React.FC = () => {
   // ==========================================
   if (view === 'create') {
     return (
-      <div id="create-return-screen" className="flex-1 flex flex-col min-h-0 bg-[#121417] text-[#F5F6F7]">
+      <div
+        id="create-return-screen"
+        className={`flex-1 flex flex-col min-h-0 transition-colors ${
+          isDark ? 'bg-[#121417] text-[#F5F6F7]' : 'bg-[#F9FAFB] text-gray-900'
+        }`}
+      >
         {/* Top bar */}
-        <div className="p-3 border-b border-[#333842] bg-[#1C1F24] flex items-center justify-between">
+        <div
+          className={`p-3 border-b flex items-center justify-between transition-colors shrink-0 ${
+            isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white'
+          }`}
+        >
           <button
             id="create-return-back-button"
             type="button"
@@ -168,12 +180,14 @@ export const ReturnsScreen: React.FC = () => {
               setSelectedOrder(null);
               setItems([]);
             }}
-            className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white"
+            className={`flex items-center gap-1.5 text-xs font-semibold ${
+              isDark ? 'text-gray-300 hover:text-white' : 'text-gray-700 hover:text-black'
+            }`}
           >
             {language === 'ar' ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
             <span>{language === 'ar' ? 'رجوع للقائمة' : 'Back to List'}</span>
           </button>
-          <span className="text-sm font-bold text-white">
+          <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
             {language === 'ar' ? 'إنشاء طلب إرجاع' : 'New Sales Return'}
           </span>
           <div className="w-12"></div>
@@ -181,8 +195,12 @@ export const ReturnsScreen: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-32">
           {/* Step 1: Select Original Sales Order (§5.2) */}
-          <div className="rounded-2xl border border-[#333842] bg-[#1C1F24] p-3">
-            <label className="text-xs font-bold text-blue-400 block mb-1.5">
+          <div
+            className={`rounded-2xl border p-3 transition-colors ${
+              isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white shadow-sm'
+            }`}
+          >
+            <label className="text-xs font-bold text-rose-500 block mb-1.5">
               {language === 'ar' ? 'اختيار طلب البيع الأصلي المراد إرجاعه *' : 'Pick Source Sales Order *'}
             </label>
             <select
@@ -192,7 +210,11 @@ export const ReturnsScreen: React.FC = () => {
                 const found = orders.find(o => o.id === e.target.value);
                 if (found) handleSelectSourceOrder(found);
               }}
-              className="w-full h-12 px-3 rounded-xl border border-[#333842] bg-[#121417] text-white text-xs outline-none"
+              className={`w-full h-12 px-3 rounded-xl border text-xs outline-none transition-colors ${
+                isDark
+                  ? 'border-[#333842] bg-[#121417] text-white focus:border-rose-500'
+                  : 'border-gray-300 bg-white text-gray-900 focus:border-rose-500'
+              }`}
             >
               <option value="">{language === 'ar' ? '-- اختر طلب بيع من القائمة --' : '-- Choose Sales Order --'}</option>
               {orders.map((o) => (
@@ -207,53 +229,66 @@ export const ReturnsScreen: React.FC = () => {
           {selectedOrder && (
             <>
               {/* Order Info (Read-only mirror per §5.2) */}
-              <div className="rounded-2xl border border-[#333842] bg-[#1C1F24] p-3 text-xs space-y-2">
+              <div
+                className={`rounded-2xl border p-3 text-xs space-y-2 transition-colors ${
+                  isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white shadow-sm'
+                }`}
+              >
                 <span className="font-bold text-gray-400 block text-[11px]">
                   {language === 'ar' ? 'بيانات الطلب والعميل (مطابقة للأصل)' : 'Source Order Details'}
                 </span>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <span className="text-[10px] text-gray-500 block">العميل:</span>
-                    <span className="font-bold text-white">{selectedOrder.customerName}</span>
+                    <span className="text-[10px] text-gray-400 block">{language === 'ar' ? 'العميل:' : 'Customer:'}</span>
+                    <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedOrder.customerName}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-500 block">الرقم الضريبي:</span>
-                    <span className="font-mono text-white">{selectedOrder.customerTaxNumber}</span>
+                    <span className="text-[10px] text-gray-400 block">{language === 'ar' ? 'الرقم الضريبي:' : 'Tax Number:'}</span>
+                    <span className={`font-mono ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedOrder.customerTaxNumber}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-500 block">المخزن:</span>
-                    <span className="text-white truncate block">{selectedOrder.warehouse}</span>
+                    <span className="text-[10px] text-gray-400 block">{language === 'ar' ? 'المستودع:' : 'Warehouse:'}</span>
+                    <span className={isDark ? 'text-gray-300' : 'text-gray-800'}>{selectedOrder.warehouse}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-gray-500 block">تاريخ الإرجاع:</span>
+                    <span className="text-[10px] text-gray-400 block">{language === 'ar' ? 'تاريخ المرتجع:' : 'Return Date:'}</span>
                     <input
                       type="date"
                       value={returnDate}
                       onChange={(e) => setReturnDate(e.target.value)}
-                      className="font-mono text-xs text-white bg-transparent border-b border-[#333842] outline-none"
+                      className={`font-mono text-xs px-2 py-0.5 rounded border ${
+                        isDark ? 'bg-[#121417] border-[#333842] text-white' : 'bg-gray-50 border-gray-300 text-gray-900'
+                      }`}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Line Items for Return */}
-              <div className="rounded-2xl border border-[#333842] bg-[#1C1F24] p-3">
+              {/* Line Items Selection & Quantities (§5.2) */}
+              <div
+                className={`rounded-2xl border p-3 transition-colors ${
+                  isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white shadow-sm'
+                }`}
+              >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-white">
+                  <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                     {language === 'ar' ? 'أصناف الإرجاع (حدد الكميات المرتجعة)' : 'Return Line Items'}
                   </span>
                   <button
                     type="button"
                     onClick={() => {
-                      const returnAll = items.map(it => ({
-                        ...it,
-                        enteredQty: it.maxReturnQty || it.enteredQty,
-                        lineTotal: Math.max(0, (it.maxReturnQty || it.enteredQty) * it.unitPrice - it.discount)
-                      }));
+                      const returnAll = items.map(it => {
+                        const qty = it.maxReturnQty || it.enteredQty;
+                        return {
+                          ...it,
+                          enteredQty: qty,
+                          lineTotal: calculateLineTotal(qty, it.unitPrice, it.discount, it.discountType)
+                        };
+                      });
                       setItems(returnAll);
                       soundService.playScanSuccess();
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 text-[11px] font-bold"
+                    className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 text-[11px] font-bold transition-colors"
                   >
                     {language === 'ar' ? 'إرجاع كل الكميات' : 'Return All Qties'}
                   </button>
@@ -281,7 +316,11 @@ export const ReturnsScreen: React.FC = () => {
         </div>
 
         {/* Sticky Action Bar */}
-        <div className="sticky bottom-0 z-20 p-3 bg-[#262A31] border-t border-[#333842] flex items-center gap-2 shadow-2xl">
+        <div
+          className={`sticky bottom-0 z-20 p-3 border-t flex items-center gap-2 shadow-2xl transition-colors ${
+            isDark ? 'bg-[#262A31] border-[#333842]' : 'bg-white border-gray-200'
+          }`}
+        >
           <button
             type="button"
             id="save-return-button"
@@ -296,7 +335,11 @@ export const ReturnsScreen: React.FC = () => {
           <button
             type="button"
             onClick={() => setView('list')}
-            className="h-14 px-5 border border-[#333842] hover:bg-[#333842] text-gray-300 rounded-xl font-semibold text-xs flex items-center justify-center transition-colors"
+            className={`h-14 px-5 border rounded-xl font-semibold text-xs flex items-center justify-center transition-colors ${
+              isDark
+                ? 'border-[#333842] hover:bg-[#333842] text-gray-300'
+                : 'border-gray-300 hover:bg-gray-100 text-gray-700'
+            }`}
           >
             <span>{language === 'ar' ? 'رجوع' : 'Back'}</span>
           </button>
@@ -309,9 +352,18 @@ export const ReturnsScreen: React.FC = () => {
   // VIEW: LIST SCREEN (§5.1)
   // ==========================================
   return (
-    <div id="returns-list-screen" className="flex-1 flex flex-col min-h-0 bg-[#121417] text-[#F5F6F7]">
+    <div
+      id="returns-list-screen"
+      className={`flex-1 flex flex-col min-h-0 transition-colors ${
+        isDark ? 'bg-[#121417] text-[#F5F6F7]' : 'bg-[#F9FAFB] text-gray-900'
+      }`}
+    >
       {/* Top Action Bar */}
-      <div className="p-3 border-b border-[#333842] bg-[#1C1F24] flex items-center justify-between gap-2">
+      <div
+        className={`p-3 border-b flex items-center justify-between gap-2 shrink-0 transition-colors ${
+          isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white'
+        }`}
+      >
         <button
           id="create-new-return-btn"
           onClick={() => {
@@ -329,8 +381,10 @@ export const ReturnsScreen: React.FC = () => {
           onClick={() => setShowFilters(!showFilters)}
           className={`h-12 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-colors ${
             showFilters || activeFilterCount > 0
-              ? 'bg-rose-500/20 border-rose-500 text-rose-400'
-              : 'bg-[#262A31] border-[#333842] text-gray-300 hover:text-white'
+              ? 'bg-rose-500/20 border-rose-500 text-rose-500 font-bold'
+              : isDark
+              ? 'bg-[#262A31] border-[#333842] text-gray-300 hover:text-white'
+              : 'bg-gray-100 border-gray-200 text-gray-700 hover:bg-gray-200'
           }`}
         >
           <Filter className="w-4 h-4" />
@@ -345,38 +399,60 @@ export const ReturnsScreen: React.FC = () => {
 
       {/* Filter drawer (§5.1) */}
       {showFilters && (
-        <div className="p-3 border-b border-[#333842] bg-[#1E2228] space-y-2 text-xs">
+        <div
+          className={`p-3 border-b space-y-2 text-xs transition-colors ${
+            isDark ? 'border-[#333842] bg-[#1E2228]' : 'border-gray-200 bg-gray-50'
+          }`}
+        >
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="text-[10px] text-gray-400 block mb-1">رقم مرتجع البيع</label>
+              <label className="text-[10px] text-gray-400 block mb-1">
+                {language === 'ar' ? 'رقم مرتجع البيع' : 'Return No'}
+              </label>
               <input
                 type="text"
                 value={filterReturnNo}
                 onChange={(e) => setFilterReturnNo(e.target.value)}
                 placeholder="RET-..."
-                className="w-full h-10 px-2 rounded-lg border border-[#333842] bg-[#121417] text-white font-mono text-xs outline-none"
+                className={`w-full h-10 px-2 rounded-lg border font-mono text-xs outline-none ${
+                  isDark
+                    ? 'border-[#333842] bg-[#121417] text-white'
+                    : 'border-gray-300 bg-white text-gray-900'
+                }`}
               />
             </div>
             <div>
-              <label className="text-[10px] text-gray-400 block mb-1">رقم طلب البيع الأصلي</label>
+              <label className="text-[10px] text-gray-400 block mb-1">
+                {language === 'ar' ? 'رقم طلب البيع الأصلي' : 'Original Order No'}
+              </label>
               <input
                 type="text"
                 value={filterOrderNo}
                 onChange={(e) => setFilterOrderNo(e.target.value)}
                 placeholder="SO-..."
-                className="w-full h-10 px-2 rounded-lg border border-[#333842] bg-[#121417] text-white font-mono text-xs outline-none"
+                className={`w-full h-10 px-2 rounded-lg border font-mono text-xs outline-none ${
+                  isDark
+                    ? 'border-[#333842] bg-[#121417] text-white'
+                    : 'border-gray-300 bg-white text-gray-900'
+                }`}
               />
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] text-gray-400 block mb-1">العميل / الرقم الضريبي</label>
+            <label className="text-[10px] text-gray-400 block mb-1">
+              {language === 'ar' ? 'العميل / الرقم الضريبي' : 'Customer / Tax No'}
+            </label>
             <input
               type="text"
               value={filterCustomer}
               onChange={(e) => setFilterCustomer(e.target.value)}
-              placeholder="البحث بالاسم أو الرقم الضريبي..."
-              className="w-full h-10 px-2 rounded-lg border border-[#333842] bg-[#121417] text-white text-xs outline-none"
+              placeholder={language === 'ar' ? 'البحث بالاسم أو الرقم الضريبي...' : 'Search by customer or tax...'}
+              className={`w-full h-10 px-2 rounded-lg border text-xs outline-none ${
+                isDark
+                  ? 'border-[#333842] bg-[#121417] text-white'
+                  : 'border-gray-300 bg-white text-gray-900'
+              }`}
             />
           </div>
         </div>
@@ -385,12 +461,16 @@ export const ReturnsScreen: React.FC = () => {
       {/* Returns List Cards (§5.1) */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
         {filteredReturns.length === 0 ? (
-          <div className="p-8 text-center rounded-2xl border border-dashed border-[#333842] my-6">
-            <RotateCcw className="w-10 h-10 mx-auto text-gray-500 mb-2" />
-            <h3 className="text-sm font-bold text-gray-300">
+          <div
+            className={`p-8 text-center rounded-2xl border border-dashed my-6 ${
+              isDark ? 'border-[#333842]' : 'border-gray-300 bg-white'
+            }`}
+          >
+            <RotateCcw className="w-10 h-10 mx-auto text-gray-400 mb-2" />
+            <h3 className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               {language === 'ar' ? 'لا يوجد مرتجعات مسجلة' : 'No Returns Found'}
             </h3>
-            <p className="text-xs text-gray-500 mt-1 mb-4">
+            <p className="text-xs text-gray-400 mt-1 mb-4">
               {language === 'ar' ? 'يمكنك إنشاء طلب إرجاع مرتبط بطلب بيع سابق' : 'Create return linked to a sales order'}
             </p>
             <button
@@ -405,28 +485,30 @@ export const ReturnsScreen: React.FC = () => {
           filteredReturns.map((ret) => (
             <div
               key={ret.id}
-              className="p-3.5 rounded-2xl border border-[#333842] bg-[#1C1F24] shadow-sm relative space-y-1.5"
+              className={`p-3.5 rounded-2xl border shadow-sm relative space-y-1.5 transition-colors ${
+                isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white'
+              }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-xs text-rose-400">
+                <span className="font-mono font-bold text-xs text-rose-500">
                   {ret.returnNumber}
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500">
                   {language === 'ar' ? 'قيد المراجعة' : 'Pending'}
                 </span>
               </div>
 
               <div className="text-xs">
-                <div className="font-bold text-white">{ret.customerName}</div>
+                <div className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{ret.customerName}</div>
                 <div className="text-[11px] text-gray-400 flex items-center justify-between mt-0.5">
-                  <span>مرتبط بطلب: {ret.linkedOrderNumber}</span>
+                  <span>{language === 'ar' ? `مرتبط بطلب: ${ret.linkedOrderNumber}` : `Linked Order: ${ret.linkedOrderNumber}`}</span>
                   <span className="font-mono">{ret.date}</span>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-[#333842]/50 flex items-center justify-between">
-                <span className="text-[11px] text-gray-400">قيمة الإرجاع:</span>
-                <span className="font-mono font-bold text-sm text-rose-400">
+              <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-gray-100'}`}>
+                <span className="text-[11px] text-gray-400">{language === 'ar' ? 'قيمة الإرجاع:' : 'Return Total:'}</span>
+                <span className="font-mono font-bold text-sm text-rose-500">
                   {ret.netDue.toFixed(2)} ر.س
                 </span>
               </div>

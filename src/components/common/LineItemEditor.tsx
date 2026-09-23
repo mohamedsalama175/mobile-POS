@@ -3,6 +3,7 @@ import { LineItem, ProductItem } from '../../types';
 import { storageService } from '../../services/storage';
 import { soundService } from '../../services/sound';
 import { useApp } from '../../context/AppContext';
+import { calculateLineTotal } from '../../utils/pricing';
 import { GET_SAMPLE_20_LINE_ITEMS } from '../../data/mockData';
 import { SwipeableLineItemCard } from './SwipeableLineItemCard';
 import { EditItemModal } from './EditItemModal';
@@ -37,7 +38,7 @@ export const LineItemEditor: React.FC<LineItemEditorProps> = ({
   onReturnAll,
   isReturnMode = false
 }) => {
-  const { language, theme, openScanner, showToast } = useApp();
+  const { language, theme, openScanner, showToast, registerScannerHandler } = useApp();
   const [codeInput, setCodeInput] = useState('');
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid'); // Default to grid view layout for categorizing items
@@ -53,6 +54,11 @@ export const LineItemEditor: React.FC<LineItemEditorProps> = ({
     setProducts(storageService.getProducts());
   }, []);
 
+  // Register scanner handler with physical triggers
+  useEffect(() => {
+    return registerScannerHandler(handleProcessCode);
+  });
+
   // Filter items by active category if selected
   const displayedItems = React.useMemo(() => {
     if (!activeCategory) return items;
@@ -65,18 +71,6 @@ export const LineItemEditor: React.FC<LineItemEditorProps> = ({
       return cat === activeCategory;
     });
   }, [items, activeCategory, products]);
-
-  const calculateLineTotal = (
-    qty: number,
-    price: number,
-    discount: number,
-    discountType: 'percentage' | 'fixed' = 'fixed'
-  ) => {
-    const gross = qty * price;
-    const discountVal = discountType === 'percentage' ? (gross * discount) / 100 : discount;
-    const net = Math.max(0, gross - discountVal);
-    return Number(net.toFixed(2));
-  };
 
   // Fast barcode scan handler
   const handleProcessCode = (scannedCode: string) => {
@@ -462,7 +456,7 @@ export const LineItemEditor: React.FC<LineItemEditorProps> = ({
               : `Total items: ${items.length}`}
           </span>
           <span className={`flex items-center gap-1 text-[10px] ${isDark ? 'text-blue-400' : 'text-gray-500'}`}>
-            <span>{language === 'ar' ? 'اسحب لليسار للإجراءات • اضغط للتفاصيل' : 'Swipe left for actions • Tap to expand'}</span>
+            <span>{language === 'ar' ? 'اسحب للإجراءات • اضغط للتفاصيل والتعديل' : 'Swipe for actions • Tap for details & edit'}</span>
           </span>
         </div>
       )}

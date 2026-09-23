@@ -39,23 +39,31 @@ export const ReceiptModal: React.FC = () => {
     receiptData.orderNumber ||
     'DOC-2026';
 
+  const isDark = theme === 'dark';
+
   return (
     <div
       id="eda50-receipt-modal"
       className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm select-none"
     >
-      <div className="w-full max-w-sm rounded-2xl bg-[#1C1F24] border border-[#333842] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-[#F5F6F7]">
+      <div className={`w-full max-w-sm rounded-2xl border shadow-2xl flex flex-col max-h-[90vh] overflow-hidden ${
+        isDark ? 'bg-[#1C1F24] border-[#333842] text-[#F5F6F7]' : 'bg-white border-slate-300 text-slate-900'
+      }`}>
         {/* Header */}
-        <div className="p-3 border-b border-[#333842] flex items-center justify-between bg-[#262A31]">
+        <div className={`p-3 border-b flex items-center justify-between ${
+          isDark ? 'border-[#333842] bg-[#262A31]' : 'border-slate-200 bg-slate-100'
+        }`}>
           <div className="flex items-center gap-2">
-            <Printer className="w-4 h-4 text-blue-400" />
+            <Printer className="w-4 h-4 text-blue-500" />
             <h3 className="text-sm font-bold">
               {receiptType ? titleMap[receiptType] : 'إيصال'}
             </h3>
           </div>
           <button
             onClick={closeReceipt}
-            className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700/50"
+            className={`p-1 rounded-lg transition-colors ${
+              isDark ? 'text-gray-400 hover:text-white hover:bg-gray-700/50' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200'
+            }`}
           >
             <X className="w-4 h-4" />
           </button>
@@ -189,7 +197,9 @@ export const ReceiptModal: React.FC = () => {
         </div>
 
         {/* Footer Actions */}
-        <div className="p-3 border-t border-[#333842] flex items-center gap-2 bg-[#262A31]">
+        <div className={`p-3 border-t flex items-center gap-2 ${
+          isDark ? 'border-[#333842] bg-[#262A31]' : 'border-slate-200 bg-slate-100'
+        }`}>
           <button
             onClick={handlePrint}
             className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors"
@@ -199,7 +209,9 @@ export const ReceiptModal: React.FC = () => {
           </button>
           <button
             onClick={handleShare}
-            className="h-12 px-3.5 border border-[#333842] hover:bg-[#333842] text-gray-300 rounded-xl text-xs font-semibold flex items-center justify-center transition-colors"
+            className={`h-12 px-3.5 border rounded-xl text-xs font-semibold flex items-center justify-center transition-colors ${
+              isDark ? 'border-[#333842] hover:bg-[#333842] text-gray-300' : 'border-slate-300 hover:bg-slate-200 text-slate-700'
+            }`}
             title="Share PDF"
           >
             <Share2 className="w-4 h-4" />

@@ -5,7 +5,9 @@ import {
   RotateCcw,
   FileText,
   CreditCard,
-  Store
+  Store,
+  Users,
+  Package
 } from 'lucide-react';
 import { soundService } from '../../services/sound';
 
@@ -53,6 +55,22 @@ export const BottomNavBar: React.FC = () => {
       fullLabelAr: 'عمليات نقطة البيع',
       fullLabelEn: 'Point of Sale',
       icon: Store
+    },
+    {
+      id: 5,
+      labelAr: 'المندوب',
+      labelEn: 'Rep',
+      fullLabelAr: 'لوحة المندوب والتحصيل',
+      fullLabelEn: 'Representative & Collections',
+      icon: Users
+    },
+    {
+      id: 6,
+      labelAr: 'الكتالوج',
+      labelEn: 'Catalog',
+      fullLabelAr: 'كتالوج الأصناف (IndexedDB)',
+      fullLabelEn: 'Product Catalog',
+      icon: Package
     }
   ];
 

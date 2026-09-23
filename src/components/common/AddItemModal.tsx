@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ProductItem, LineItem } from '../../types';
 import { ItemThumbnail } from './ItemThumbnail';
 import { soundService } from '../../services/sound';
+import { calculateLineTotal, calculateLineVat, DEFAULT_VAT_RATE } from '../../utils/pricing';
 import {
   X,
   Plus,
@@ -112,10 +113,9 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   // Calculations
   const gross = qty * price;
+  const lineTotal = calculateLineTotal(qty, price, discount, discountType);
   const discountVal = discountType === 'percentage' ? (gross * discount) / 100 : discount;
-  const netBeforeTax = Math.max(0, gross - discountVal);
-  const vatAmount = Number((netBeforeTax * 0.15).toFixed(2));
-  const lineTotal = Math.max(0, Number(netBeforeTax.toFixed(2)));
+  const vatAmount = calculateLineVat(lineTotal);
 
   const isStockExceeded = selectedProduct && !isReturnMode && qty > selectedProduct.availableQty;
   const isOutOfStock = selectedProduct && !isReturnMode && selectedProduct.availableQty <= 0;
@@ -585,7 +585,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   </div>
                 )}
                 <div className="flex items-center justify-between text-gray-500">
-                  <span>{language === 'ar' ? 'ضريبة القيمة المضافة (15% تقديرية)' : 'VAT (15% est)'}:</span>
+                  <span>{language === 'ar' ? `ضريبة القيمة المضافة (${Math.round(DEFAULT_VAT_RATE * 100)}% تقديرية)` : `VAT (${Math.round(DEFAULT_VAT_RATE * 100)}% est)`}:</span>
                   <span className={`font-mono ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{vatAmount.toFixed(2)} ر.س</span>
                 </div>
                 <div

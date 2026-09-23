@@ -13,9 +13,11 @@ import {
   Maximize2,
   Lock,
   Layers,
-  RotateCcw
+  RotateCcw,
+  Users
 } from 'lucide-react';
 import { storageService } from '../../services/storage';
+import { soundService } from '../../services/sound';
 
 interface TopAppBarProps {
   title?: string;
@@ -42,6 +44,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
     handheldMode,
     setHandheldMode,
     activeTab,
+    setActiveTab,
     showToast
   } = useApp();
 
@@ -52,7 +55,10 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
     1: { ar: 'مرتجعات طلبات البيع', en: 'Sales Returns' },
     2: { ar: 'فواتير طلبات البيع', en: 'Sales Invoices' },
     3: { ar: 'مذكرات الائتمان', en: 'Credit Notes' },
-    4: { ar: 'نقطة البيع (POS)', en: 'Point of Sale' }
+    4: { ar: 'نقطة البيع (POS)', en: 'Point of Sale' },
+    5: { ar: 'لوحة المندوب والتحصيل', en: 'Representative & Collections' },
+    6: { ar: 'كتالوج الأصناف (IndexedDB)', en: 'Product Catalog' },
+    7: { ar: 'دليل العملاء (IndexedDB)', en: 'Customer Directory' }
   };
 
   const displayTitle = title || (language === 'ar' ? defaultTitles[activeTab]?.ar : defaultTitles[activeTab]?.en) || 'Honeywell EDA50';
@@ -154,6 +160,23 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
           <RefreshCw className="w-5 h-5" />
         </button>
 
+        {/* Representative Dashboard Quick Action */}
+        <button
+          id="topbar-rep-button"
+          onClick={() => {
+            soundService.playClick();
+            setActiveTab(activeTab === 5 ? 2 : 5);
+          }}
+          className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${
+            activeTab === 5
+              ? 'bg-blue-600 text-white shadow-md'
+              : isDark ? 'text-blue-400 hover:bg-[#333842]' : 'text-blue-600 hover:bg-gray-100'
+          }`}
+          title={language === 'ar' ? 'لوحة المندوب والتحصيل' : 'Representative Dashboard'}
+        >
+          <Users className="w-5 h-5" />
+        </button>
+
         {/* Overflow Menu Button */}
         <div className="relative">
           <button
@@ -181,6 +204,26 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                   isDark ? 'bg-[#1C1F24] border-[#333842] text-gray-200' : 'bg-white border-gray-200 text-gray-800'
                 }`}
               >
+                {/* Representative Dashboard Link */}
+                <button
+                  id="menu-open-representative"
+                  onClick={() => {
+                    setActiveTab(5);
+                    setMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors border-b ${
+                    isDark ? 'border-[#333842] hover:bg-[#262A31]' : 'border-gray-100 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2 font-bold text-blue-500">
+                    <Users className="w-4 h-4 text-blue-400" />
+                    {language === 'ar' ? 'حساب وتحصيلات المندوب' : 'Representative Dashboard'}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">
+                    ERP
+                  </span>
+                </button>
+
                 {/* Language Switch */}
                 <button
                   id="menu-toggle-lang"
@@ -195,6 +238,26 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                   </span>
                   <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">
                     {language.toUpperCase()}
+                  </span>
+                </button>
+
+                {/* Customer Directory Navigation */}
+                <button
+                  id="menu-open-customers"
+                  onClick={() => {
+                    setActiveTab(7);
+                    setMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors ${
+                    isDark ? 'hover:bg-[#262A31]' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-emerald-400" />
+                    {language === 'ar' ? 'دليل حسابات العملاء' : 'Customer Directory'}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-mono font-bold">
+                    IndexedDB
                   </span>
                 </button>
 

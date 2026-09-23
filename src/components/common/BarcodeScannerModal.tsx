@@ -42,16 +42,18 @@ export const BarcodeScannerModal: React.FC = () => {
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#333842]">
+        <div className={`flex items-center justify-between px-4 py-3 border-b ${
+          isDark ? 'border-[#333842] bg-[#262A31]' : 'border-slate-200 bg-slate-100'
+        }`}>
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
+            <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-500">
               <Scan className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-sm font-bold">
                 {language === 'ar' ? 'قارئ الباركود (EDA50 2D Imager)' : 'Barcode Scanner (EDA50 2D)'}
               </h2>
-              <p className="text-[11px] text-gray-400">
+              <p className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                 {language === 'ar' ? 'وجه الليزر نحو الباركود أو اختر صنفاً' : 'Aim at barcode or pick test item'}
               </p>
             </div>
@@ -59,7 +61,9 @@ export const BarcodeScannerModal: React.FC = () => {
           <button
             id="close-scanner-button"
             onClick={closeScanner}
-            className="p-1.5 rounded-lg hover:bg-gray-500/20 text-gray-400 hover:text-white transition-colors"
+            className={`p-1.5 rounded-lg transition-colors ${
+              isDark ? 'hover:bg-gray-500/20 text-gray-400 hover:text-white' : 'hover:bg-slate-200 text-slate-500 hover:text-slate-800'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
@@ -131,7 +135,7 @@ export const BarcodeScannerModal: React.FC = () => {
           </div>
 
           {/* Manual Barcode Input Fallback */}
-          <div className="mt-3 pt-2 border-t border-[#333842]">
+          <div className={`mt-3 pt-2 border-t ${isDark ? 'border-[#333842]' : 'border-slate-200'}`}>
             <form
               onSubmit={(e) => {
                 e.preventDefault();

@@ -8,6 +8,9 @@ import { ReturnsScreen } from './components/screens/ReturnsScreen';
 import { InvoicesScreen } from './components/screens/InvoicesScreen';
 import { CreditNotesScreen } from './components/screens/CreditNotesScreen';
 import { PosScreen } from './components/screens/PosScreen';
+import { RepresentativeScreen } from './components/screens/RepresentativeScreen';
+import { ProductCatalogScreen } from './modules/products/ProductCatalogScreen';
+import { CustomerDirectoryScreen } from './modules/customers/CustomerDirectoryScreen';
 import { BarcodeScannerModal } from './components/common/BarcodeScannerModal';
 import { ReceiptModal } from './components/common/ReceiptModal';
 import { OutboxModal } from './components/common/OutboxModal';
@@ -29,6 +32,9 @@ const AppContent: React.FC = () => {
           {activeTab === 2 && <InvoicesScreen />}
           {activeTab === 3 && <CreditNotesScreen />}
           {activeTab === 4 && <PosScreen />}
+          {activeTab === 5 && <RepresentativeScreen />}
+          {activeTab === 6 && <ProductCatalogScreen />}
+          {activeTab === 7 && <CustomerDirectoryScreen />}
         </main>
 
         {/* 5-Tab Persistent Bottom Navigation Bar (§1 & §3.3) */}

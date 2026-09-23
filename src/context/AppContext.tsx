@@ -47,8 +47,9 @@ interface AppContextType {
   toasts: ToastMessage[];
   toast: ToastMessage | null;
   showToast: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
-  // Physical trigger simulation
+  // Physical trigger simulation & active handler
   fireHardwareTrigger: () => void;
+  registerScannerHandler: (handler: (code: string) => void) => () => void;
 }
 
 const DEFAULT_USER: UserSession = {
@@ -64,8 +65,20 @@ const DEFAULT_USER: UserSession = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguageState] = useState<Language>('ar');
-  const [theme, setThemeState] = useState<Theme>('light');
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('eda50_language') as Language;
+      if (saved === 'ar' || saved === 'en') return saved;
+    }
+    return 'ar';
+  });
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('eda50_theme') as Theme;
+      if (saved === 'dark' || saved === 'light') return saved;
+    }
+    return 'dark';
+  });
   const [activeTab, setActiveTab] = useState<number>(0); // 0: Orders, 1: Returns, 2: Invoices, 3: Credit Notes, 4: POS
   const [isOnline, setIsOnlineState] = useState<boolean>(true);
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
@@ -76,6 +89,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Modals
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [activeScanCallback, setActiveScanCallback] = useState<((code: string) => void) | null>(null);
+  const registeredScannerHandlerRef = React.useRef<((code: string) => void) | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receiptData, setReceiptData] = useState<any | null>(null);
   const [receiptType, setReceiptType] = useState<'pos' | 'invoice' | 'order' | null>(null);
@@ -94,12 +108,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('eda50_language', lang);
+    }
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   };
 
   const setTheme = (t: Theme) => {
     setThemeState(t);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('eda50_theme', t);
+    }
+  };
+
+  const registerScannerHandler = (handler: (code: string) => void) => {
+    registeredScannerHandlerRef.current = handler;
+    return () => {
+      if (registeredScannerHandlerRef.current === handler) {
+        registeredScannerHandlerRef.current = null;
+      }
+    };
   };
 
   const setIsOnline = (online: boolean) => {
@@ -190,9 +219,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Physical scan trigger button (Left or Right yellow buttons on Honeywell EDA50)
   const fireHardwareTrigger = () => {
     soundService.playClick();
-    // If a scanner callback is active or there's an active input, open the scanner overlay
+    // If a scanner callback is active or a screen registered its scanner handler, open with that handler
     if (!isScannerOpen) {
-      setIsScannerOpen(true);
+      if (activeScanCallback) {
+        setIsScannerOpen(true);
+      } else if (registeredScannerHandlerRef.current) {
+        openScanner(registeredScannerHandlerRef.current);
+      } else {
+        setIsScannerOpen(true);
+      }
     }
   };
 
@@ -230,7 +265,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         toast: toasts[0] || null,
         showToast,
-        fireHardwareTrigger
+        fireHardwareTrigger,
+        registerScannerHandler
       }}
     >
       {children}

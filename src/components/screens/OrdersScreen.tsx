@@ -8,6 +8,7 @@ import { LineItemEditor } from '../common/LineItemEditor';
 import { TotalsSummary } from '../common/TotalsSummary';
 import { ItemThumbnail } from '../common/ItemThumbnail';
 import { INITIAL_LOOKUP_DATA, GET_SAMPLE_20_LINE_ITEMS, MOCK_CUSTOMERS } from '../../data/mockData';
+import { calculateDocumentTotals } from '../../utils/pricing';
 import {
   Plus,
   Filter,
@@ -100,13 +101,15 @@ export const OrdersScreen: React.FC = () => {
   };
 
   // Live Totals Calculations (§3.6)
-  const grossTotal = items.reduce((sum, item) => sum + (item.enteredQty * item.unitPrice), 0);
-  const totalDiscount = items.reduce((sum, item) => sum + (item.discount || 0), 0);
-  const totalAfterDiscount = Math.max(0, grossTotal - totalDiscount);
-  const totalTax = Number((totalAfterDiscount * 0.14).toFixed(2)); // 14% VAT
-  const totalAfterTax = Number((totalAfterDiscount + totalTax).toFixed(2));
-  const withholdingTax = Number((totalAfterDiscount * 0.01).toFixed(2)); // 1%
-  const netDue = Number((totalAfterTax - withholdingTax).toFixed(2));
+  const {
+    grossTotal,
+    totalDiscount,
+    totalAfterDiscount,
+    totalTax,
+    totalAfterTax,
+    withholdingTax,
+    netDue
+  } = calculateDocumentTotals(items);
 
   // Handle Save
   const handleSave = () => {

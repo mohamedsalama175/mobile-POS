@@ -4,6 +4,8 @@ import { storageService } from '../../services/storage';
 import { useApp } from '../../context/AppContext';
 import { Search, UserCheck, AlertTriangle, ChevronDown, X } from 'lucide-react';
 
+import { customerRepository } from '../../db/repositories/customerRepository';
+
 interface CustomerPickerProps {
   selectedCustomer: Customer | null;
   onSelectCustomer: (cust: Customer) => void;
@@ -22,7 +24,18 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    setCustomers(storageService.getCustomers());
+    customerRepository
+      .getAll()
+      .then((custs) => {
+        if (custs && custs.length > 0) {
+          setCustomers(custs);
+        } else {
+          setCustomers(storageService.getCustomers());
+        }
+      })
+      .catch(() => {
+        setCustomers(storageService.getCustomers());
+      });
   }, []);
 
   const filteredCustomers = customers.filter((c) => {

@@ -145,6 +145,10 @@ export interface SalesInvoice {
   totalAfterTax: number;
   withholdingTax: number;
   netDue: number;
+  isCashPayment?: boolean;
+  paidAmount?: number;
+  remainingBalance?: number;
+  cashReceiptDate?: string;
   settlementStatus?: 'unpaid' | 'partial' | 'paid';
   status?: 'draft' | 'issued' | 'cancelled';
   syncStatus: SyncStatus;
@@ -238,4 +242,30 @@ export interface LookupData {
   warehouses: string[];
   salesReps: string[];
   branches: string[];
+}
+
+export interface RepresentativeProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  displayNameEn: string;
+  badgeNumber: string;
+  creditLimit: number; // حد الائتمان
+  allocationCeiling: number; // مبلغ التخصيص / سقف التخصيص
+  pettyCashBalance: number; // رصيد العهدة / الخزينة الصغيرة
+  branch: string;
+  phone: string;
+}
+
+export interface PettyCashTransaction {
+  id: string;
+  repId: string;
+  repName: string;
+  type: 'collection' | 'settlement' | 'deposit';
+  amount: number;
+  invoiceNumber?: string;
+  customerName?: string;
+  date: string;
+  notes?: string;
+  createdAt: string;
 }
