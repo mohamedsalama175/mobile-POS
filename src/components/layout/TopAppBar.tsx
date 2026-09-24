@@ -52,13 +52,12 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
 
   const defaultTitles: Record<number, { ar: string; en: string }> = {
     0: { ar: 'طلبات البيع', en: 'Sales Orders' },
-    1: { ar: 'مرتجعات طلبات البيع', en: 'Sales Returns' },
-    2: { ar: 'فواتير طلبات البيع', en: 'Sales Invoices' },
-    3: { ar: 'مذكرات الائتمان', en: 'Credit Notes' },
-    4: { ar: 'نقطة البيع (POS)', en: 'Point of Sale' },
-    5: { ar: 'لوحة المندوب والتحصيل', en: 'Representative & Collections' },
-    6: { ar: 'كتالوج الأصناف (IndexedDB)', en: 'Product Catalog' },
-    7: { ar: 'دليل العملاء (IndexedDB)', en: 'Customer Directory' }
+    1: { ar: 'فواتير المبيعات', en: 'Sales Invoices' },
+    2: { ar: 'نقطة البيع (POS)', en: 'Point of Sale' },
+    3: { ar: 'المرتجعات والائتمان', en: 'Returns & Credit' },
+    4: { ar: 'حساب المندوب والتحصيل', en: 'Representative & Collections' },
+    5: { ar: 'كتالوج الأصناف (IndexedDB)', en: 'Product Catalog' },
+    6: { ar: 'دليل العملاء (IndexedDB)', en: 'Customer Directory' }
   };
 
   const displayTitle = title || (language === 'ar' ? defaultTitles[activeTab]?.ar : defaultTitles[activeTab]?.en) || 'Honeywell EDA50';
@@ -165,10 +164,10 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
           id="topbar-rep-button"
           onClick={() => {
             soundService.playClick();
-            setActiveTab(activeTab === 5 ? 2 : 5);
+            setActiveTab(activeTab === 4 ? 0 : 4);
           }}
           className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${
-            activeTab === 5
+            activeTab === 4
               ? 'bg-blue-600 text-white shadow-md'
               : isDark ? 'text-blue-400 hover:bg-[#333842]' : 'text-blue-600 hover:bg-gray-100'
           }`}
@@ -208,7 +207,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                 <button
                   id="menu-open-representative"
                   onClick={() => {
-                    setActiveTab(5);
+                    setActiveTab(4);
                     setMenuOpen(false);
                   }}
                   className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors border-b ${
@@ -221,6 +220,46 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">
                     ERP
+                  </span>
+                </button>
+
+                {/* Product Catalog Navigation */}
+                <button
+                  id="menu-open-catalog"
+                  onClick={() => {
+                    setActiveTab(5);
+                    setMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors ${
+                    isDark ? 'hover:bg-[#262A31]' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-purple-400" />
+                    {language === 'ar' ? 'كتالوج الأصناف والمخزن' : 'Product Catalog'}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 font-mono font-bold">
+                    IndexedDB
+                  </span>
+                </button>
+
+                {/* Customer Directory Navigation */}
+                <button
+                  id="menu-open-customers"
+                  onClick={() => {
+                    setActiveTab(6);
+                    setMenuOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors ${
+                    isDark ? 'hover:bg-[#262A31]' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-emerald-400" />
+                    {language === 'ar' ? 'دليل حسابات العملاء' : 'Customer Directory'}
+                  </span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-mono font-bold">
+                    IndexedDB
                   </span>
                 </button>
 
@@ -238,26 +277,6 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                   </span>
                   <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-bold">
                     {language.toUpperCase()}
-                  </span>
-                </button>
-
-                {/* Customer Directory Navigation */}
-                <button
-                  id="menu-open-customers"
-                  onClick={() => {
-                    setActiveTab(7);
-                    setMenuOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between px-3.5 py-2.5 transition-colors ${
-                    isDark ? 'hover:bg-[#262A31]' : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-emerald-400" />
-                    {language === 'ar' ? 'دليل حسابات العملاء' : 'Customer Directory'}
-                  </span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-mono font-bold">
-                    IndexedDB
                   </span>
                 </button>
 

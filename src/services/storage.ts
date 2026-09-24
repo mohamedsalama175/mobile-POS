@@ -405,7 +405,7 @@ class StorageService {
         success: false,
         settledAmount: 0,
         settledInvoicesCount: 0,
-        error: `مبلغ التسوية (${settlementAmount.toLocaleString()} ر.س) يتجاوز رصيد العهدة الحالي (${rep.pettyCashBalance.toLocaleString()} ر.س)`
+        error: `مبلغ التسوية (${settlementAmount.toLocaleString()} ج.م) يتجاوز رصيد العهدة الحالي (${rep.pettyCashBalance.toLocaleString()} ج.م)`
       };
     }
 
@@ -470,7 +470,7 @@ class StorageService {
       type: 'settlement',
       amount: actualSettled,
       date: now.split('T')[0],
-      notes: notes || `تسوية تلقائية FIFO لـ ${settledCount} فاتورة بقيمة ${actualSettled.toLocaleString()} ر.س`,
+      notes: notes || `تسوية تلقائية FIFO لـ ${settledCount} فاتورة بقيمة ${actualSettled.toLocaleString()} ج.م`,
       createdAt: now
     });
 

@@ -329,7 +329,7 @@ export const SwipeableLineItemCard: React.FC<SwipeableLineItemCardProps> = ({
                   : 'text-emerald-600 dark:text-emerald-400'
               }`}
             >
-              {item.lineTotal.toFixed(2)} {isRtl ? 'ر.س' : 'SAR'}
+              {item.lineTotal.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
             </div>
 
             {/* Line 2: Gray Monospace Code (matching '#TXN_10021' in Photo 2) */}
@@ -379,7 +379,7 @@ export const SwipeableLineItemCard: React.FC<SwipeableLineItemCardProps> = ({
                   {isRtl ? 'سعر الوحدة' : 'Unit Price'}
                 </span>
                 <span className={`font-mono font-bold text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {item.unitPrice.toFixed(2)} {isRtl ? 'ر.س' : 'SAR'}
+                  {item.unitPrice.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
                 </span>
               </div>
 
@@ -393,7 +393,7 @@ export const SwipeableLineItemCard: React.FC<SwipeableLineItemCardProps> = ({
                 </span>
                 <span className="font-mono font-bold text-amber-600 text-xs">
                   {item.discount > 0
-                    ? `-${item.discount} ${item.discountType === 'percentage' ? '%' : (isRtl ? 'ر.س' : 'SAR')}`
+                    ? `-${item.discount} ${item.discountType === 'percentage' ? '%' : (isRtl ? 'ج.م' : 'EGP')}`
                     : '0.00'}
                 </span>
               </div>
@@ -409,7 +409,7 @@ export const SwipeableLineItemCard: React.FC<SwipeableLineItemCardProps> = ({
                     : `VAT (${Math.round(DEFAULT_VAT_RATE * 100)}%)`}
                 </span>
                 <span className={`font-mono font-bold text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {calculateLineVat(item.lineTotal).toFixed(2)} {isRtl ? 'ر.س' : 'SAR'}
+                  {calculateLineVat(item.lineTotal).toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
                 </span>
               </div>
 
@@ -424,7 +424,7 @@ export const SwipeableLineItemCard: React.FC<SwipeableLineItemCardProps> = ({
                   {isRtl ? 'إجمالي السطر' : 'Line Total'}
                 </span>
                 <span className={`font-mono font-bold text-xs ${isDark ? 'text-emerald-400' : 'text-white'}`}>
-                  {item.lineTotal.toFixed(2)} {isRtl ? 'ر.س' : 'SAR'}
+                  {item.lineTotal.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
                 </span>
               </div>
             </div>

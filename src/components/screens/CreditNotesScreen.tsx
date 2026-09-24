@@ -213,7 +213,7 @@ export const CreditNotesScreen: React.FC = () => {
               <option value="">{language === 'ar' ? '-- اختر فاتورة ضريبية من القائمة --' : '-- Choose Invoice --'}</option>
               {invoices.map((inv) => (
                 <option key={inv.id} value={inv.id}>
-                  {inv.invoiceNumber} - {inv.customerName} ({inv.netDue.toFixed(2)} ر.س)
+                  {inv.invoiceNumber} - {inv.customerName} ({inv.netDue.toFixed(2)} ج.م)
                 </option>
               ))}
             </select>
@@ -434,7 +434,7 @@ export const CreditNotesScreen: React.FC = () => {
               <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-slate-200'}`}>
                 <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>قيمة الخصم/الرد:</span>
                 <span className="font-mono font-bold text-sm text-purple-500">
-                  - {cn.netDue.toFixed(2)} ر.س
+                  - {cn.netDue.toFixed(2)} ج.م
                 </span>
               </div>
             </div>

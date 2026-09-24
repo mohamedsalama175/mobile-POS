@@ -76,7 +76,7 @@ export const ProductCardGrid: React.FC<ProductCardGridProps> = ({
       {/* Card Footer: Price & Edit Action */}
       <CardFooter className="mt-2 pt-2">
         <div className="font-mono font-bold text-base text-emerald-600 dark:text-emerald-400">
-          {product.unitPrice.toFixed(2)} {isRtl ? 'ر.س' : 'SAR'}
+          {product.unitPrice.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
         </div>
 
         <button

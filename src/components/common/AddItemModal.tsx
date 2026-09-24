@@ -328,7 +328,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                               isDark ? 'text-blue-400' : 'text-[#111827]'
                             }`}
                           >
-                            {prod.unitPrice} ر.س
+                            {prod.unitPrice} ج.م
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-0.5">
@@ -481,7 +481,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               {/* Unit Price */}
               <div className="space-y-1.5">
                 <label className={`text-xs font-bold ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {language === 'ar' ? 'سعر الوحدة (ر.س) *' : 'Unit Price (SAR) *'}
+                  {language === 'ar' ? 'سعر الوحدة (ج.م) *' : 'Unit Price (EGP) *'}
                 </label>
                 <div className="relative">
                   <input
@@ -497,7 +497,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     }`}
                   />
                   <div className="absolute left-3 top-3 text-xs text-gray-400 font-mono">
-                    SAR
+                    EGP
                   </div>
                 </div>
               </div>
@@ -527,7 +527,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                       }`}
                     >
                       <Coins className="w-3 h-3" />
-                      <span>ر.س</span>
+                      <span>ج.م</span>
                     </button>
                     <button
                       type="button"
@@ -563,7 +563,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     }`}
                   />
                   <div className="absolute left-3 top-3 text-xs text-gray-400 font-mono">
-                    {discountType === 'percentage' ? '%' : 'SAR'}
+                    {discountType === 'percentage' ? '%' : 'EGP'}
                   </div>
                 </div>
               </div>
@@ -576,17 +576,17 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               >
                 <div className="flex items-center justify-between text-gray-500">
                   <span>{language === 'ar' ? 'الإجمالي قبل الخصم' : 'Gross Total'}:</span>
-                  <span className={`font-mono ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{gross.toFixed(2)} ر.س</span>
+                  <span className={`font-mono ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{gross.toFixed(2)} ج.م</span>
                 </div>
                 {discountVal > 0 && (
                   <div className="flex items-center justify-between text-amber-600 font-medium">
                     <span>{language === 'ar' ? 'قيمة الخصم' : 'Discount Value'}:</span>
-                    <span className="font-mono">-{discountVal.toFixed(2)} ر.س</span>
+                    <span className="font-mono">-{discountVal.toFixed(2)} ج.م</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between text-gray-500">
                   <span>{language === 'ar' ? `ضريبة القيمة المضافة (${Math.round(DEFAULT_VAT_RATE * 100)}% تقديرية)` : `VAT (${Math.round(DEFAULT_VAT_RATE * 100)}% est)`}:</span>
-                  <span className={`font-mono ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{vatAmount.toFixed(2)} ر.س</span>
+                  <span className={`font-mono ${isDark ? 'text-gray-300' : 'text-gray-800'}`}>{vatAmount.toFixed(2)} ج.م</span>
                 </div>
                 <div
                   className={`pt-2 border-t flex items-center justify-between font-bold text-sm ${
@@ -597,7 +597,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     {language === 'ar' ? 'صافي إجمالي السطر' : 'Net Line Total'}:
                   </span>
                   <span className={`font-mono text-base ${isDark ? 'text-blue-400' : 'text-[#111827]'}`}>
-                    {lineTotal.toFixed(2)} ر.س
+                    {lineTotal.toFixed(2)} ج.م
                   </span>
                 </div>
               </div>

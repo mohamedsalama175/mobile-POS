@@ -214,7 +214,7 @@ export const OutboxModal: React.FC = () => {
                             <span>{isFailed ? 'فشل بالخادم' : 'معلق محلياً'}</span>
                           </span>
                           <span className={`font-mono font-bold text-xs block mt-1 ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                            {(item.netDue || 0).toFixed(2)} ر.س
+                            {(item.netDue || 0).toFixed(2)} ج.م
                           </span>
                         </div>
                       </div>
@@ -267,7 +267,7 @@ export const OutboxModal: React.FC = () => {
                       </span>
                     </div>
                     <span className={`font-mono text-[11px] ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                      {(item.netDue || 0).toFixed(2)} ر.س
+                      {(item.netDue || 0).toFixed(2)} ج.م
                     </span>
                   </div>
                 );

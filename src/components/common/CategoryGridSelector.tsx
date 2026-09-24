@@ -222,7 +222,7 @@ export const CategoryGridSelector: React.FC<CategoryGridSelectorProps> = ({
                   </div>
                   <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-mono text-gray-300">
                     <span className="truncate">{cat.totalQty} {language === 'ar' ? 'قطعة' : 'pcs'}</span>
-                    <span className="font-bold text-emerald-400">{cat.subtotal.toFixed(0)} {language === 'ar' ? 'ر.س' : 'SAR'}</span>
+                    <span className="font-bold text-emerald-400">{cat.subtotal.toFixed(0)} {language === 'ar' ? 'ج.م' : 'EGP'}</span>
                   </div>
                 </div>
               </div>
@@ -292,10 +292,10 @@ export const CategoryGridSelector: React.FC<CategoryGridSelectorProps> = ({
                 {language === 'ar'
                   ? `إجمالي قيمة أصناف هذه الفئة: ${
                       categoryGroups.find((g) => g.name === activeCategory)?.subtotal.toFixed(2) || '0.00'
-                    } ر.س`
+                    } ج.م`
                   : `Category Subtotal: ${
                       categoryGroups.find((g) => g.name === activeCategory)?.subtotal.toFixed(2) || '0.00'
-                    } SAR`}
+                    } EGP`}
               </p>
             </div>
           </div>

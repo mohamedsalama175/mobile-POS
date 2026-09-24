@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import { CustomerPicker } from '../common/CustomerPicker';
 import { LineItemEditor } from '../common/LineItemEditor';
 import { TotalsSummary } from '../common/TotalsSummary';
+import { WizardHeader, StickyBottomBar, NumericKeypad, AuthGate } from '../ui';
 import { INITIAL_LOOKUP_DATA } from '../../data/mockData';
 import { calculateDocumentTotals } from '../../utils/pricing';
 import {
@@ -18,15 +19,20 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  ArrowLeft,
-  ArrowRight,
   RotateCcw,
   ChevronDown,
   ChevronUp,
   FileCheck,
   CreditCard,
   Banknote,
-  X
+  X,
+  Building,
+  User,
+  Phone,
+  Check,
+  ArrowRight,
+  ArrowLeft,
+  DollarSign
 } from 'lucide-react';
 
 export const InvoicesScreen: React.FC = () => {
@@ -35,6 +41,10 @@ export const InvoicesScreen: React.FC = () => {
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const isDark = theme === 'dark';
+  const isRtl = language === 'ar';
+
+  // Wizard state: 1: Order/Customer, 2: Line Items, 3: Payment & Cash
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
 
   // Filters state
   const [showFilters, setShowFilters] = useState(false);
@@ -59,6 +69,10 @@ export const InvoicesScreen: React.FC = () => {
   // US-04: Cash payment option and collected amount
   const [isCashPayment, setIsCashPayment] = useState(false);
   const [paidAmountInput, setPaidAmountInput] = useState<string>('');
+
+  // Cash Authentication Gate state
+  const [isAuthGateOpen, setIsAuthGateOpen] = useState(false);
+  const [pendingPrintAfterAuth, setPendingPrintAfterAuth] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -87,7 +101,7 @@ export const InvoicesScreen: React.FC = () => {
     setSubCompany(order.subCompany);
     setItems([...order.items]);
     showToast(
-      language === 'ar'
+      isRtl
         ? `تم استيراد ${order.items.length} أصناف من الطلب: ${order.orderNumber}`
         : `Imported ${order.items.length} items from order: ${order.orderNumber}`,
       'info'
@@ -109,27 +123,56 @@ export const InvoicesScreen: React.FC = () => {
   const numericPaidAmount = isCashPayment ? Math.min(Math.max(0, Number(paidAmountInput) || 0), netDue) : 0;
   const remainingAmount = isCashPayment ? Math.max(0, netDue - (Number(paidAmountInput) || 0)) : netDue;
 
-  const handleSaveAndPrint = (shouldPrint: boolean) => {
+  // Wizard Step Navigation
+  const handleNextStep = () => {
+    soundService.playClick();
+    if (wizardStep === 1) {
+      if (!selectedCustomer) {
+        soundService.playError();
+        showToast(isRtl ? 'يرجى تحديد العميل أو اختيار طلب بيع' : 'Please select customer or order', 'error');
+        return;
+      }
+      setWizardStep(2);
+    } else if (wizardStep === 2) {
+      if (items.length === 0) {
+        soundService.playError();
+        showToast(isRtl ? 'أضف صنفاً واحداً على الأقل للفاتورة' : 'Add at least one line item', 'error');
+        return;
+      }
+      setWizardStep(3);
+    }
+  };
+
+  const handlePrevStep = () => {
+    soundService.playClick();
+    if (wizardStep > 1) {
+      setWizardStep((prev) => (prev - 1) as any);
+    } else {
+      setView('list');
+    }
+  };
+
+  // Trigger Save with optional PIN Auth for Cash
+  const initiateSave = (shouldPrint: boolean) => {
     if (!selectedCustomer) {
-      soundService.playError();
-      showToast(language === 'ar' ? 'يرجى تحديد العميل' : 'Please select a customer', 'error');
+      setWizardStep(1);
+      showToast(isRtl ? 'يرجى تحديد العميل' : 'Please select a customer', 'error');
       return;
     }
     if (items.length === 0) {
-      soundService.playError();
-      showToast(language === 'ar' ? 'أضف صنفاً واحداً على الأقل للفاتورة' : 'Add at least one line item', 'error');
+      setWizardStep(2);
+      showToast(isRtl ? 'أضف صنفاً واحداً على الأقل للفاتورة' : 'Add at least one line item', 'error');
       return;
     }
 
-    // US-04 Validation
     if (isCashPayment) {
       const parsedPaid = Number(paidAmountInput);
       if (isNaN(parsedPaid) || parsedPaid <= 0) {
         soundService.playError();
         showToast(
-          language === 'ar'
-            ? 'يرجى إدخال مبلغ محصل أكبر من صفر أو إلغاء خيار السداد النقدي'
-            : 'Please enter a collected amount greater than 0',
+          isRtl
+            ? 'يرجى إدخال مبلغ محصل أكبر من صفر عبر لوحة المفاتيح'
+            : 'Please enter collected amount greater than zero',
           'error'
         );
         return;
@@ -137,25 +180,36 @@ export const InvoicesScreen: React.FC = () => {
       if (parsedPaid > netDue) {
         soundService.playError();
         showToast(
-          language === 'ar'
+          isRtl
             ? `المبلغ المحصل (${parsedPaid}) لا يمكن أن يتجاوز إجمالي الفاتورة (${netDue.toFixed(2)})`
             : `Collected amount cannot exceed invoice net due`,
           'error'
         );
         return;
       }
+
+      // Cash Movement Security: Open AuthGate PIN modal
+      setPendingPrintAfterAuth(shouldPrint);
+      setIsAuthGateOpen(true);
+      return;
     }
 
+    // Direct save for credit (non-cash) invoice
+    commitInvoice(shouldPrint);
+  };
+
+  // Final Commit to Storage
+  const commitInvoice = (shouldPrint: boolean) => {
     const saved = storageService.saveInvoice({
       linkedOrderNumber: selectedOrder?.orderNumber,
       date: invoiceDate,
-      customerId: selectedCustomer.id,
-      customerName: selectedCustomer.name,
-      customerTaxNumber: selectedCustomer.taxNumber,
-      customerPhone: selectedCustomer.phone,
-      creditLimit: selectedCustomer.creditLimit,
-      customerBranch: selectedCustomer.branchName || 'الفرع الرئيسي',
-      invoiceType,
+      customerId: selectedCustomer!.id,
+      customerName: selectedCustomer!.name,
+      customerTaxNumber: selectedCustomer!.taxNumber,
+      customerPhone: selectedCustomer!.phone,
+      creditLimit: selectedCustomer!.creditLimit,
+      customerBranch: selectedCustomer!.branchName || 'الفرع الرئيسي',
+      invoiceType: isCashPayment ? 'cash' : invoiceType,
       subCompany,
       warehouse,
       salesRep: currentUser.displayName,
@@ -171,7 +225,7 @@ export const InvoicesScreen: React.FC = () => {
       paidAmount: isCashPayment ? Number(paidAmountInput) : 0,
       remainingBalance: isCashPayment ? Math.max(0, netDue - Number(paidAmountInput)) : netDue,
       cashReceiptDate: isCashPayment ? invoiceDate : undefined,
-      settlementStatus: isCashPayment 
+      settlementStatus: isCashPayment
         ? (Number(paidAmountInput) >= netDue ? 'paid' : (Number(paidAmountInput) > 0 ? 'partial' : 'unpaid'))
         : 'unpaid',
       status: 'issued'
@@ -179,8 +233,8 @@ export const InvoicesScreen: React.FC = () => {
 
     soundService.playScanSuccess();
     showToast(
-      language === 'ar'
-        ? `تم إصدار الفاتورة: ${saved.invoiceNumber}${isCashPayment ? ` (تحصيل: ${Number(paidAmountInput).toLocaleString()} ر.س)` : ''}`
+      isRtl
+        ? `تم إصدار الفاتورة: ${saved.invoiceNumber}${isCashPayment ? ` (تحصيل: ${Number(paidAmountInput).toLocaleString()} ج.م)` : ''}`
         : `Invoice issued: ${saved.invoiceNumber}`,
       'success'
     );
@@ -195,6 +249,7 @@ export const InvoicesScreen: React.FC = () => {
     setItems([]);
     setIsCashPayment(false);
     setPaidAmountInput('');
+    setWizardStep(1);
     loadData();
     setView('list');
   };
@@ -217,426 +272,482 @@ export const InvoicesScreen: React.FC = () => {
   });
 
   // ==========================================
-  // VIEW: CREATE INVOICE SCREEN (§6.2)
+  // VIEW: 3-STEP WIZARD (CREATE INVOICE)
   // ==========================================
   if (view === 'create') {
     return (
-      <div id="create-invoice-screen" className={`flex-1 flex flex-col min-h-0 ${isDark ? 'bg-[#121417] text-[#F5F6F7]' : 'bg-slate-50 text-slate-900'}`}>
-        {/* Header */}
-        <div className={`p-3 border-b flex items-center justify-between ${isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-slate-200 bg-white shadow-sm'}`}>
-          <button
-            id="create-invoice-back-button"
-            type="button"
-            onClick={() => {
-              setView('list');
-              setSelectedOrder(null);
-              setSelectedCustomer(null);
-              setItems([]);
-            }}
-            className={`flex items-center gap-1.5 text-xs font-semibold ${isDark ? 'text-gray-300 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
-          >
-            {language === 'ar' ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
-            <span>{language === 'ar' ? 'رجوع' : 'Back'}</span>
-          </button>
-          <span className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-            {language === 'ar' ? 'إنشاء وإصدار فاتورة بيع' : 'New Sales Invoice'}
-          </span>
-          <div className="w-12"></div>
-        </div>
+      <div
+        id="create-invoice-screen"
+        className={`flex-1 flex flex-col min-h-0 ${
+          isDark ? 'bg-[#121417] text-[#F5F6F7]' : 'bg-[#F9FAFB] text-gray-900'
+        }`}
+      >
+        {/* Wizard Header */}
+        <WizardHeader
+          currentStep={wizardStep}
+          totalSteps={3}
+          title={
+            wizardStep === 1
+              ? (isRtl ? 'تحديد العميل أو الطلب' : 'Customer or Order')
+              : wizardStep === 2
+              ? (isRtl ? `مراجعة الأصناف (${items.length})` : `Review Items (${items.length})`)
+              : (isRtl ? 'طريقة السداد والتحصيل' : 'Payment & Cash Collection')
+          }
+          subtitle={
+            wizardStep === 1
+              ? (isRtl ? 'اختر طلب بيع لتحويله أو حدد عميلاً مباشرة' : 'Convert existing order or select customer directly')
+              : wizardStep === 2
+              ? (isRtl ? 'تحقق من الكميات والخصم وإجمالي الفاتورة' : 'Verify quantities, discounts and net due')
+              : (isRtl ? 'حدد السداد النقدي أو الآجل وأدخل المبلغ المحصل' : 'Choose cash or credit and record collected cash')
+          }
+          onBack={handlePrevStep}
+        />
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-32">
-          {/* Optional: Pull from Confirmed Sales Order (§6.2) */}
-          <div className={`rounded-2xl border p-3 ${isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-slate-200 bg-white shadow-sm'}`}>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-bold text-blue-500">
-                {language === 'ar' ? 'استيراد من طلب بيع مؤكد (اختياري)' : 'Import from Confirmed Order (Optional)'}
-              </label>
-              {selectedOrder && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedOrder(null);
-                    setSelectedCustomer(null);
-                    setItems([]);
-                  }}
-                  className="text-[10px] text-rose-500 font-bold hover:underline"
-                >
-                  {language === 'ar' ? 'إلغاء الربط' : 'Unlink'}
-                </button>
-              )}
-            </div>
-            <select
-              value={selectedOrder?.id || ''}
-              onChange={(e) => {
-                const found = orders.find(o => o.id === e.target.value);
-                if (found) handleLinkOrder(found);
-              }}
-              className={`w-full h-11 px-3 rounded-xl border text-xs outline-none ${
-                isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-slate-300 bg-slate-50 text-slate-900'
-              }`}
-            >
-              <option value="">{language === 'ar' ? '-- بدون ربط (إنشاء فاتورة مباشرة) --' : '-- Direct Invoice without Order --'}</option>
-              {orders.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.orderNumber} - {o.customerName} ({o.netDue.toFixed(2)} ر.س)
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Customer Selection */}
-          <div className={`rounded-2xl border p-3 ${isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-slate-200 bg-white shadow-sm'}`}>
-            <CustomerPicker
-              selectedCustomer={selectedCustomer}
-              onSelectCustomer={(c) => setSelectedCustomer(c)}
-              isReadOnly={!!selectedOrder}
-            />
-          </div>
-
-          {/* Invoice Type Toggle (آجل / كاش §6.1 & §6.2) */}
-          <div className={`rounded-2xl border p-3 text-xs space-y-2 ${isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-slate-200 bg-white shadow-sm'}`}>
-            <span className={`font-bold block mb-1 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
-              {language === 'ar' ? 'نوع الفاتورة وشروط الدفع *' : 'Invoice Type & Payment Term *'}
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                id="invoice-type-credit"
-                onClick={() => setInvoiceType('credit')}
-                className={`h-11 rounded-xl font-bold flex items-center justify-center gap-2 border transition-colors ${
-                  invoiceType === 'credit'
-                    ? 'bg-blue-600 border-blue-500 text-white'
-                    : isDark
-                    ? 'bg-[#121417] border-[#333842] text-gray-400 hover:text-white'
-                    : 'bg-slate-100 border-slate-300 text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <CreditCard className="w-4 h-4" />
-                <span>{language === 'ar' ? 'آجل (على الحساب)' : 'Credit (Account)'}</span>
-              </button>
-              <button
-                type="button"
-                id="invoice-type-cash"
-                onClick={() => setInvoiceType('cash')}
-                className={`h-11 rounded-xl font-bold flex items-center justify-center gap-2 border transition-colors ${
-                  invoiceType === 'cash'
-                    ? 'bg-emerald-600 border-emerald-500 text-white'
-                    : isDark
-                    ? 'bg-[#121417] border-[#333842] text-gray-400 hover:text-white'
-                    : 'bg-slate-100 border-slate-300 text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Banknote className="w-4 h-4" />
-                <span>{language === 'ar' ? 'نقدي (كاش فوري)' : 'Cash'}</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-2">
-              <div>
-                <label className={`text-[10px] block mb-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                  {language === 'ar' ? 'تاريخ الفاتورة' : 'Invoice Date'}
-                </label>
-                <input
-                  type="date"
-                  value={invoiceDate}
-                  onChange={(e) => setInvoiceDate(e.target.value)}
-                  className={`w-full h-10 px-2 rounded-lg border font-mono text-xs outline-none ${
-                    isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-slate-300 bg-slate-50 text-slate-900'
-                  }`}
-                />
-              </div>
-              <div>
-                <label className={`text-[10px] block mb-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                  {language === 'ar' ? 'المستودع' : 'Warehouse'}
-                </label>
-                <select
-                  value={warehouse}
-                  onChange={(e) => setWarehouse(e.target.value)}
-                  className={`w-full h-10 px-2 rounded-lg border text-xs outline-none truncate ${
-                    isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-slate-300 bg-slate-50 text-slate-900'
+        <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-24">
+          {/* STEP 1: SELECT ORDER OR DIRECT CUSTOMER */}
+          {wizardStep === 1 && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              {/* Confirmed Orders to convert */}
+              {orders.length > 0 && (
+                <div
+                  className={`p-3.5 rounded-2xl border space-y-2.5 ${
+                    isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
                   }`}
                 >
-                  {INITIAL_LOOKUP_DATA.warehouses.map((wh, i) => (
-                    <option key={i} value={wh}>{wh}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Line Items Editor */}
-          <div className={`rounded-2xl border p-3 ${isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-slate-200 bg-white shadow-sm'}`}>
-            <LineItemEditor
-              items={items}
-              onChangeItems={(newItems) => setItems(newItems)}
-            />
-          </div>
-
-          {/* Totals Summary Card */}
-          <TotalsSummary
-            grossTotal={grossTotal}
-            totalDiscount={totalDiscount}
-            totalAfterDiscount={totalAfterDiscount}
-            totalTax={totalTax}
-            totalAfterTax={totalAfterTax}
-            withholdingTax={withholdingTax}
-            netDue={netDue}
-          />
-
-          {/* US-04: Cash Payment Option & Live Balance Calculation (§US-04) */}
-          <div className={`rounded-2xl border p-3.5 space-y-3 transition-all ${
-            isDark 
-              ? isCashPayment ? 'border-amber-500/50 bg-[#1C1F24]' : 'border-[#333842] bg-[#1C1F24]' 
-              : isCashPayment ? 'border-amber-400 bg-amber-50/40 shadow-sm' : 'border-slate-200 bg-white shadow-sm'
-          }`}>
-            <div className="flex items-center justify-between">
-              <label 
-                htmlFor="cash-payment-checkbox"
-                className="flex items-center gap-2 cursor-pointer select-none"
-              >
-                <input
-                  id="cash-payment-checkbox"
-                  type="checkbox"
-                  checked={isCashPayment}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setIsCashPayment(checked);
-                    if (checked && !paidAmountInput) {
-                      setPaidAmountInput(netDue > 0 ? netDue.toString() : '');
-                    }
-                  }}
-                  className="w-4 h-4 rounded text-amber-500 focus:ring-amber-400 accent-amber-500 cursor-pointer"
-                />
-                <div className="flex items-center gap-1.5 font-bold text-xs">
-                  <Banknote className="w-4 h-4 text-amber-500" />
-                  <span className={isDark ? 'text-white' : 'text-slate-900'}>
-                    {language === 'ar' ? 'سداد نقدي (Cash)' : 'Cash Payment (Collection)'}
-                  </span>
-                </div>
-              </label>
-
-              {isCashPayment && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                  {language === 'ar' ? 'تحديث رصيد العهدة' : 'Updates Rep Custody'}
-                </span>
-              )}
-            </div>
-
-            {isCashPayment && (
-              <div className="space-y-2.5 pt-1 border-t border-dashed border-amber-500/30">
-                <div className="grid grid-cols-2 gap-2.5">
-                  {/* Collected Amount Input */}
-                  <div>
-                    <label className={`text-[11px] font-bold block mb-1 ${isDark ? 'text-amber-400' : 'text-amber-800'}`}>
-                      {language === 'ar' ? 'المبلغ المحصَّل (ر.س) *' : 'Collected Amount (SAR) *'}
-                    </label>
-                    <input
-                      id="collected-amount-input"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max={netDue}
-                      value={paidAmountInput}
-                      onChange={(e) => setPaidAmountInput(e.target.value)}
-                      placeholder={netDue > 0 ? netDue.toFixed(2) : '0.00'}
-                      className={`w-full h-11 px-3 rounded-xl border font-mono text-sm font-bold outline-none transition-all ${
-                        Number(paidAmountInput) > netDue
-                          ? 'border-rose-500 bg-rose-500/10 text-rose-500 ring-1 ring-rose-500'
-                          : isDark
-                          ? 'border-amber-500/50 bg-[#121417] text-amber-400 focus:border-amber-400'
-                          : 'border-amber-400 bg-white text-amber-900 focus:border-amber-500'
-                      }`}
-                    />
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {isRtl ? 'تحويل من طلب بيع مؤكد (سريع)' : 'Convert Confirmed Order (Fast)'}
+                    </span>
+                    {selectedOrder && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedOrder(null);
+                          setSelectedCustomer(null);
+                          setItems([]);
+                        }}
+                        className="text-[10px] text-rose-500 font-bold hover:underline"
+                      >
+                        {isRtl ? 'إلغاء الربط' : 'Unlink'}
+                      </button>
+                    )}
                   </div>
 
-                  {/* Read-Only Remaining Balance Highlighted in Orange (US-04 Requirement) */}
-                  <div>
-                    <label className={`text-[11px] font-bold block mb-1 ${isDark ? 'text-orange-400' : 'text-orange-800'}`}>
-                      {language === 'ar' ? 'المتبقي على العميل (ر.س)' : 'Remaining Balance'}
-                    </label>
-                    <div className={`w-full h-11 px-3 rounded-xl border flex items-center justify-between font-mono text-sm font-extrabold ${
-                      isDark 
-                        ? 'border-orange-500/60 bg-orange-950/30 text-orange-400 shadow-inner' 
-                        : 'border-orange-400 bg-orange-100/70 text-orange-900'
-                    }`}>
-                      <span>{remainingAmount.toFixed(2)}</span>
-                      <span className="text-[10px] font-sans font-normal opacity-80">ر.س</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick 1-Click Settle Full Net Due Button */}
-                {netDue > 0 && Number(paidAmountInput) !== netDue && (
-                  <button
-                    type="button"
-                    onClick={() => setPaidAmountInput(netDue.toString())}
-                    className={`w-full py-1.5 px-2 rounded-lg text-[11px] font-bold border transition-colors flex items-center justify-center gap-1.5 ${
-                      isDark 
-                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20' 
-                        : 'border-amber-300 bg-amber-100/60 text-amber-800 hover:bg-amber-100'
+                  <select
+                    value={selectedOrder?.id || ''}
+                    onChange={(e) => {
+                      const found = orders.find(o => o.id === e.target.value);
+                      if (found) handleLinkOrder(found);
+                    }}
+                    className={`w-full h-12 px-3 rounded-xl border text-xs outline-none transition-colors ${
+                      isDark
+                        ? 'border-[#333842] bg-[#121417] text-white focus:border-blue-500'
+                        : 'border-gray-200 bg-gray-50 text-gray-900 focus:bg-white focus:border-blue-500'
                     }`}
                   >
-                    <span>{language === 'ar' ? `تحصيل كامل المبلغ (${netDue.toFixed(2)} ر.س)` : `Collect Full Due (${netDue.toFixed(2)})`}</span>
-                  </button>
-                )}
+                    <option value="">
+                      {isRtl ? '-- اضغط لاختيار طلب بيع مؤكد --' : '-- Tap to select confirmed order --'}
+                    </option>
+                    {orders.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.orderNumber} - {o.customerName} ({o.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-                {/* Live Business Logic Notes & Alerts */}
-                {Number(paidAmountInput) > netDue ? (
-                  <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-500 text-[11px] flex items-center gap-1.5">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{language === 'ar' ? 'تنبيه: المبلغ المحصَّل لا يمكن أن يتجاوز صافي الفاتورة' : 'Collected amount exceeds net due'}</span>
-                  </div>
-                ) : remainingAmount === 0 && Number(paidAmountInput) > 0 ? (
-                  <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-[11px] flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>{language === 'ar' ? 'سداد كامل: سيتم إيداع كامل القيمة بعهدة المندوب وتصفير رصيد الفاتورة' : 'Paid in full: 100% deposited to rep custody'}</span>
-                  </div>
-                ) : Number(paidAmountInput) > 0 ? (
-                  <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[11px] flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 shrink-0" />
-                    <span>{language === 'ar' ? `سداد جزئي: تضاف ${Number(paidAmountInput).toFixed(2)} لعهدة المندوب، ويبقى ${remainingAmount.toFixed(2)} مديونية على العميل` : `Partial: Rep receives cash, remaining balance stays on customer`}</span>
-                  </div>
-                ) : null}
+              {/* Customer Picker */}
+              <div
+                className={`p-3.5 rounded-2xl border ${
+                  isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {isRtl ? 'العميل المستلم للفاتورة *' : 'Invoice Customer *'}
+                  </span>
+                  {selectedCustomer && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400">
+                      {isRtl ? 'تم التحديد' : 'Selected'}
+                    </span>
+                  )}
+                </div>
+                <CustomerPicker
+                  selectedCustomer={selectedCustomer}
+                  onSelectCustomer={(c) => {
+                    setSelectedCustomer(c);
+                    soundService.playClick();
+                  }}
+                />
               </div>
-            )}
-          </div>
+
+              {/* Warehouse & Date info */}
+              <div
+                className={`p-3.5 rounded-2xl border grid grid-cols-2 gap-2 text-xs ${
+                  isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
+                }`}
+              >
+                <div>
+                  <label className={`text-[11px] block mb-1 font-bold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {isRtl ? 'تاريخ الفاتورة' : 'Invoice Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={invoiceDate}
+                    onChange={(e) => setInvoiceDate(e.target.value)}
+                    className={`w-full h-11 px-2.5 rounded-xl border outline-none font-mono text-xs ${
+                      isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-gray-200 bg-gray-50 text-gray-900'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className={`text-[11px] block mb-1 font-bold ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {isRtl ? 'المخزن المصدر' : 'Warehouse'}
+                  </label>
+                  <select
+                    value={warehouse}
+                    onChange={(e) => setWarehouse(e.target.value)}
+                    className={`w-full h-11 px-2.5 rounded-xl border text-xs outline-none truncate ${
+                      isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-gray-200 bg-gray-50 text-gray-900'
+                    }`}
+                  >
+                    {INITIAL_LOOKUP_DATA.warehouses.map((wh, idx) => (
+                      <option key={idx} value={wh}>{wh}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: REVIEW LINE ITEMS */}
+          {wizardStep === 2 && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              <div
+                className={`rounded-2xl border p-2.5 ${
+                  isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
+                }`}
+              >
+                <LineItemEditor
+                  items={items}
+                  onChangeItems={(newItems) => setItems(newItems)}
+                />
+              </div>
+
+              <div id="invoice-totals-summary-container">
+                <TotalsSummary
+                  grossTotal={grossTotal}
+                  totalDiscount={totalDiscount}
+                  totalAfterDiscount={totalAfterDiscount}
+                  totalTax={totalTax}
+                  totalAfterTax={totalAfterTax}
+                  withholdingTax={withholdingTax}
+                  netDue={netDue}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: PAYMENT METHOD & CASH COLLECTION (US-04) */}
+          {wizardStep === 3 && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
+              {/* Payment Mode Segment */}
+              <div
+                className={`p-3.5 rounded-2xl border space-y-3 ${
+                  isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
+                }`}
+              >
+                <div className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  {isRtl ? 'اختر طريقة السداد *' : 'Select Payment Method *'}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundService.playClick();
+                      setIsCashPayment(false);
+                      setInvoiceType('credit');
+                      setPaidAmountInput('');
+                    }}
+                    className={`h-14 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                      !isCashPayment
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400 ring-offset-1'
+                        : isDark
+                        ? 'border-[#333842] bg-[#121417] text-gray-300 hover:bg-[#252932]'
+                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    <span className="text-xs font-bold">{isRtl ? 'آجل (على الحساب)' : 'Credit (On Account)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundService.playClick();
+                      setIsCashPayment(true);
+                      setInvoiceType('cash');
+                      if (!paidAmountInput) {
+                        setPaidAmountInput(String(netDue));
+                      }
+                    }}
+                    className={`h-14 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+                      isCashPayment
+                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-400 ring-offset-1'
+                        : isDark
+                        ? 'border-[#333842] bg-[#121417] text-gray-300 hover:bg-[#252932]'
+                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Banknote className="w-5 h-5" />
+                    <span className="text-xs font-bold">{isRtl ? 'سداد نقدي فوري' : 'Cash Payment'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Cash Numeric Keypad & Live Balance (US-04) */}
+              {isCashPayment ? (
+                <div
+                  className={`p-3.5 rounded-2xl border space-y-3.5 ${
+                    isDark ? 'bg-[#1C1F24] border-emerald-500/30' : 'bg-white border-emerald-200 shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {isRtl ? 'إدخال المبلغ المحصل نقداً (ج.م) *' : 'Enter Collected Cash (EGP) *'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPaidAmountInput(String(netDue))}
+                      className="text-[11px] font-bold text-emerald-500 hover:underline"
+                    >
+                      {isRtl ? 'سداد كامل المبلغ' : 'Pay Full Due'}
+                    </button>
+                  </div>
+
+                  {/* Numeric Keypad with Quick Chips & Live Change Due */}
+                  <NumericKeypad
+                    value={paidAmountInput}
+                    onChange={(val) => setPaidAmountInput(String(val))}
+                    totalRequired={netDue}
+                    maxAmount={netDue}
+                    quickPresets={[50, 100, 200, 500]}
+                    currency={isRtl ? 'ج.م' : 'EGP'}
+                    language={language}
+                  />
+                </div>
+              ) : (
+                /* Credit Summary */
+                <div
+                  className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                    isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">{isRtl ? 'المبلغ المستحق على العميل:' : 'Due Amount:'}</span>
+                    <span className="font-mono font-bold text-sm text-blue-500">
+                      {netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-500">{isRtl ? 'حد الائتمان المتبقي:' : 'Available Credit:'}</span>
+                    <span className="font-mono font-bold text-emerald-400">
+                      {(selectedCustomer?.creditLimit || 0).toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 pt-1 border-t border-inherit">
+                    {isRtl
+                      ? 'سيتم إضافة إجمالي الفاتورة إلى الرصيد المدين للعميل دون تحصيل نقدي.'
+                      : 'The full net due will be added to the customer AR balance without immediate cash collection.'}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Sticky Action Bar (§6.2: Save & Print) */}
-        <div className={`sticky bottom-0 z-20 p-3 border-t flex items-center gap-2 shadow-2xl ${
-          isDark ? 'bg-[#262A31] border-[#333842]' : 'bg-white border-slate-200'
-        }`}>
-          <button
-            type="button"
-            id="save-print-invoice-btn"
-            onClick={() => handleSaveAndPrint(true)}
-            className="flex-1 h-14 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg active:scale-98"
-          >
-            <Printer className="w-4 h-4" />
-            <span>{language === 'ar' ? 'حفظ وطباعة الفاتورة' : 'Save & Print'}</span>
-          </button>
+        {/* Wizard Sticky Bottom Action Bar */}
+        <StickyBottomBar
+          primaryText={
+            wizardStep === 1
+              ? (isRtl ? 'التالي: الأصناف' : 'Next: Items')
+              : wizardStep === 2
+              ? (isRtl ? 'التالي: السداد' : 'Next: Payment')
+              : (isRtl ? 'إصدار الفاتورة وحفظها' : 'Issue & Save Invoice')
+          }
+          primaryIcon={wizardStep === 3 ? <Check className="w-5 h-5" /> : isRtl ? <ArrowLeft className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+          onPrimary={wizardStep === 3 ? () => initiateSave(false) : handleNextStep}
+          secondaryText={wizardStep === 1 ? (isRtl ? 'إلغاء' : 'Cancel') : (isRtl ? 'السابق' : 'Back')}
+          secondaryIcon={wizardStep === 1 ? <X className="w-4 h-4" /> : isRtl ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
+          onSecondary={handlePrevStep}
+          summaryValue={items.length > 0 ? netDue.toFixed(2) : undefined}
+          summaryLabel={isRtl ? 'صافي الفاتورة' : 'Invoice Total'}
+        />
 
-          <button
-            type="button"
-            id="save-only-invoice-btn"
-            onClick={() => handleSaveAndPrint(false)}
-            className="h-14 px-4 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-          >
-            <FileCheck className="w-4 h-4" />
-            <span>{language === 'ar' ? 'حفظ فقط' : 'Save'}</span>
-          </button>
-        </div>
+        {/* AuthGate PIN Modal for Cash Movement */}
+        <AuthGate
+          isOpen={isAuthGateOpen}
+          onClose={() => {
+            setIsAuthGateOpen(false);
+            showToast(isRtl ? 'تم إلغاء تأكيد العملية النقدية' : 'Cash transaction cancelled', 'info');
+          }}
+          onSuccess={() => {
+            setIsAuthGateOpen(false);
+            commitInvoice(pendingPrintAfterAuth);
+          }}
+          amount={Number(paidAmountInput || 0)}
+          currency={isRtl ? 'ج.م' : 'EGP'}
+          title={isRtl ? 'تأكيد عملية التحصيل النقدي' : 'Confirm Cash Collection'}
+          description={
+            isRtl
+              ? `أدخل رمز PIN لتسجيل تحصيل مبلغ ${Number(paidAmountInput || 0).toLocaleString()} ج.م في عهدة المندوب (${currentUser.displayName})`
+              : `Enter PIN to register ${Number(paidAmountInput || 0).toLocaleString()} EGP in rep cash custody`
+          }
+        />
       </div>
     );
   }
 
   // ==========================================
-  // VIEW: LIST SCREEN (§6.1)
+  // VIEW: LIST SCREEN
   // ==========================================
   return (
-    <div id="invoices-list-screen" className={`flex-1 flex flex-col min-h-0 ${isDark ? 'bg-[#121417] text-[#F5F6F7]' : 'bg-slate-50 text-slate-900'}`}>
-      {/* Top Action Bar */}
-      <div className={`p-3 border-b flex items-center justify-between gap-2 ${isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-slate-200 bg-white shadow-sm'}`}>
+    <div
+      id="invoices-list-screen"
+      className={`flex-1 flex flex-col min-h-0 relative ${
+        isDark ? 'bg-[#121417] text-[#F5F6F7]' : 'bg-[#F9FAFB] text-gray-900'
+      }`}
+    >
+      {/* Top Action & Filter Header */}
+      <div
+        className={`p-3 border-b flex items-center justify-between gap-2 shrink-0 ${
+          isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white'
+        }`}
+      >
         <button
           id="create-new-invoice-btn"
           onClick={() => {
             soundService.playClick();
+            setSelectedOrder(null);
+            setSelectedCustomer(null);
+            setItems([]);
+            setWizardStep(1);
             setView('create');
           }}
-          className="flex-1 h-12 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-98"
+          className={`flex-1 h-12 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98 min-h-[48px] ${
+            isDark
+              ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700'
+              : 'bg-[#252B37] hover:bg-[#1E232D] active:bg-black'
+          }`}
         >
           <Plus className="w-4 h-4" />
-          <span>{language === 'ar' ? 'إنشاء فاتورة جديدة' : 'New Invoice'}</span>
+          <span>{isRtl ? 'إصدار فاتورة بيع جديدة' : 'New Sales Invoice'}</span>
         </button>
 
+        {/* Filter Toggle Button */}
         <button
           id="invoices-filter-toggle"
           onClick={() => setShowFilters(!showFilters)}
-          className={`h-12 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-colors ${
+          className={`h-12 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-colors min-h-[48px] min-w-[48px] ${
             showFilters
-              ? 'bg-blue-500/20 border-blue-500 text-blue-500'
+              ? 'bg-blue-500/20 border-blue-500 text-blue-400'
               : isDark
               ? 'bg-[#262A31] border-[#333842] text-gray-300 hover:text-white'
-              : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
+              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
           }`}
+          title={isRtl ? 'تصفية وبحث' : 'Filter'}
         >
           <Filter className="w-4 h-4" />
-          <span>{language === 'ar' ? 'تصفية' : 'Filter'}</span>
         </button>
       </div>
 
-      {/* Filter drawer (§6.1) */}
+      {/* Filter Drawer */}
       {showFilters && (
-        <div className={`p-3 border-b space-y-2 text-xs ${isDark ? 'border-[#333842] bg-[#1E2228]' : 'border-slate-200 bg-slate-100'}`}>
+        <div
+          id="invoices-filter-panel"
+          className={`p-3 border-b space-y-2 text-xs transition-all ${
+            isDark ? 'bg-[#16181D] border-[#333842]' : 'bg-gray-50 border-gray-200'
+          }`}
+        >
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className={`text-[10px] block mb-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>رقم الفاتورة</label>
+              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {isRtl ? 'رقم الفاتورة' : 'Invoice #'}
+              </label>
               <input
                 type="text"
                 value={filterInvoiceNo}
                 onChange={(e) => setFilterInvoiceNo(e.target.value)}
-                placeholder="INV-... / DRAFT-..."
-                className={`w-full h-10 px-2 rounded-lg border font-mono text-xs outline-none ${
-                  isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-slate-300 bg-white text-slate-900'
+                placeholder="INV-..."
+                className={`w-full h-9 px-2 rounded-lg border font-mono text-xs outline-none ${
+                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
                 }`}
               />
             </div>
             <div>
-              <label className={`text-[10px] block mb-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>نوع الفاتورة</label>
+              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {isRtl ? 'نوع الفاتورة' : 'Type'}
+              </label>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className={`w-full h-10 px-2 rounded-lg border text-xs outline-none ${
-                  isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-slate-300 bg-white text-slate-900'
+                className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
+                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
                 }`}
               >
-                <option value="all">الكل</option>
-                <option value="credit">آجل</option>
-                <option value="cash">نقدي</option>
+                <option value="all">{isRtl ? 'الكل' : 'All'}</option>
+                <option value="credit">{isRtl ? 'آجل' : 'Credit'}</option>
+                <option value="cash">{isRtl ? 'نقدي' : 'Cash'}</option>
               </select>
             </div>
             <div>
-              <label className={`text-[10px] block mb-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>حالة السداد</label>
+              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {isRtl ? 'حالة السداد' : 'Settlement'}
+              </label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className={`w-full h-10 px-2 rounded-lg border text-xs outline-none ${
-                  isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-slate-300 bg-white text-slate-900'
+                className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
+                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
                 }`}
               >
-                <option value="all">كل الحالات</option>
-                <option value="paid">مسددة بالكامل</option>
-                <option value="partial">مسددة جزئياً</option>
-                <option value="unpaid">غير مسددة</option>
+                <option value="all">{isRtl ? 'كل الحالات' : 'All'}</option>
+                <option value="paid">{isRtl ? 'مسددة بالكامل' : 'Paid'}</option>
+                <option value="partial">{isRtl ? 'سداد جزئي' : 'Partial'}</option>
+                <option value="unpaid">{isRtl ? 'غير مسددة' : 'Unpaid'}</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className={`text-[10px] block mb-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>العميل / الرقم الضريبي</label>
+            <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {isRtl ? 'العميل / الرقم الضريبي' : 'Customer / Tax'}
+            </label>
             <input
               type="text"
               value={filterCustomer}
               onChange={(e) => setFilterCustomer(e.target.value)}
-              placeholder="ابحث بالاسم أو الرقم الضريبي..."
-              className={`w-full h-10 px-2 rounded-lg border text-xs outline-none ${
-                isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-slate-300 bg-white text-slate-900'
+              placeholder={isRtl ? 'ابحث...' : 'Search...'}
+              className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
+                isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
               }`}
             />
           </div>
         </div>
       )}
 
-      {/* Invoices List Cards (§6.1 & §US-04) */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+      {/* Invoices List Cards */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 pb-24">
         {filteredInvoices.length === 0 ? (
-          <div className={`p-8 text-center rounded-2xl border border-dashed my-6 ${isDark ? 'border-[#333842]' : 'border-slate-300 bg-white'}`}>
-            <Receipt className="w-10 h-10 mx-auto text-gray-400 mb-2" />
-            <h3 className={`text-sm font-bold ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>
-              {language === 'ar' ? 'لا يوجد فواتير صادرة' : 'No Invoices Found'}
-            </h3>
-            <p className="text-xs text-gray-500 mt-1 mb-4">
-              {language === 'ar' ? 'اضغط الزر بالأعلى لإصدار فاتورة جديدة' : 'Tap above to create new sales invoice'}
+          <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
+            <Receipt className="w-12 h-12 opacity-30 stroke-[1.5]" />
+            <div className="font-bold text-sm">
+              {isRtl ? 'لا توجد فواتير مبيعات مطابقة' : 'No matching sales invoices'}
+            </div>
+            <p className="text-xs text-gray-500 max-w-xs">
+              {isRtl ? 'أنشئ فاتورة جديدة أو حوّل طلباً مؤكداً' : 'Create new invoice or convert confirmed order'}
             </p>
           </div>
         ) : (
@@ -648,11 +759,14 @@ export const InvoicesScreen: React.FC = () => {
             return (
               <div
                 key={inv.id}
-                onClick={() => setSelectedInvoice(inv)}
-                className={`p-3.5 rounded-2xl border shadow-sm relative cursor-pointer active:scale-99 transition-all space-y-2 ${
+                onClick={() => {
+                  soundService.playClick();
+                  setSelectedInvoice(inv);
+                }}
+                className={`p-3.5 rounded-2xl border shadow-sm relative cursor-pointer active:scale-[0.99] transition-all space-y-2 ${
                   isDark
                     ? 'border-[#333842] bg-[#1C1F24] hover:border-blue-500/50'
-                    : 'border-slate-200 bg-white hover:border-blue-500/50 shadow-sm'
+                    : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -663,34 +777,34 @@ export const InvoicesScreen: React.FC = () => {
                     <span
                       className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                         inv.invoiceType === 'cash' || inv.isCashPayment
-                          ? 'bg-emerald-500/20 text-emerald-500'
-                          : 'bg-blue-500/20 text-blue-500'
+                          ? 'bg-emerald-500/20 text-emerald-400'
+                          : 'bg-blue-500/20 text-blue-400'
                       }`}
                     >
-                      {inv.invoiceType === 'cash' || inv.isCashPayment ? 'نقدي' : 'آجل'}
+                      {inv.invoiceType === 'cash' || inv.isCashPayment ? (isRtl ? 'نقدي' : 'Cash') : (isRtl ? 'آجل' : 'Credit')}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-1.5">
                     {isSettled ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 border border-emerald-500/30">
-                        {language === 'ar' ? 'مسددة بالكامل' : 'Paid in Full'}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        {isRtl ? 'مسددة بالكامل' : 'Paid in Full'}
                       </span>
                     ) : isPartial ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                        {language === 'ar' ? 'مسددة جزئياً' : 'Partially Paid'}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        {isRtl ? 'سداد جزئي' : 'Partially Paid'}
                       </span>
                     ) : (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400 border border-slate-500/30">
-                        {language === 'ar' ? 'غير مسددة' : 'Unpaid'}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-400 border border-gray-500/30">
+                        {isRtl ? 'غير مسددة' : 'Unpaid'}
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div className="text-xs">
-                  <div className={`font-bold truncate ${isDark ? 'text-white' : 'text-slate-900'}`}>{inv.customerName}</div>
-                  <div className={`text-[11px] flex items-center justify-between mt-0.5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                  <div className={`font-bold truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{inv.customerName}</div>
+                  <div className={`text-[11px] flex items-center justify-between mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     <span>{inv.customerBranch || 'الفرع الرئيسي'}</span>
                     <span className="font-mono">{inv.date}</span>
                   </div>
@@ -698,24 +812,24 @@ export const InvoicesScreen: React.FC = () => {
 
                 {/* US-04 Cash Collection & Remaining live sub-bar */}
                 {(inv.isCashPayment || (inv.paidAmount && inv.paidAmount > 0)) && (
-                  <div className={`p-1.5 rounded-lg border flex items-center justify-between text-[10px] font-mono ${
-                    isDark ? 'bg-[#121417] border-[#333842]' : 'bg-slate-50 border-slate-200'
+                  <div className={`p-2 rounded-xl border flex items-center justify-between text-[11px] font-mono ${
+                    isDark ? 'bg-[#121417] border-[#333842]' : 'bg-gray-50 border-gray-200'
                   }`}>
-                    <span className="text-amber-500 font-bold">
-                      {language === 'ar' ? 'محصَّل:' : 'Paid:'} {(inv.paidAmount || 0).toLocaleString()} ر.س
+                    <span className="text-amber-400 font-bold">
+                      {isRtl ? 'محصَّل:' : 'Paid:'} {(inv.paidAmount || 0).toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
                     </span>
-                    <span className={remaining > 0 ? 'text-orange-500 font-bold' : 'text-emerald-500 font-bold'}>
-                      {language === 'ar' ? 'المتبقي:' : 'Due:'} {remaining.toLocaleString()} ر.س
+                    <span className={remaining > 0 ? 'text-orange-400 font-bold' : 'text-emerald-400 font-bold'}>
+                      {isRtl ? 'المتبقي:' : 'Due:'} {remaining.toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
                     </span>
                   </div>
                 )}
 
-                <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-slate-200'}`}>
-                  <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                    {language === 'ar' ? 'إجمالي الفاتورة:' : 'Total Net:'}
+                <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-gray-100'}`}>
+                  <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {isRtl ? 'إجمالي الفاتورة:' : 'Total Net:'}
                   </span>
                   <span className="font-mono font-bold text-sm text-blue-500">
-                    {inv.netDue.toFixed(2)} ر.س
+                    {inv.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
                   </span>
                 </div>
               </div>
@@ -724,14 +838,34 @@ export const InvoicesScreen: React.FC = () => {
         )}
       </div>
 
-      {/* Invoice Quick Action Modal (§6.1 & §US-04: Print thermal receipt, share, details) */}
+      {/* Floating Action Button (FAB) for Instant Invoice Creation */}
+      <button
+        id="invoices-list-fab-create"
+        onClick={() => {
+          soundService.playClick();
+          setSelectedOrder(null);
+          setSelectedCustomer(null);
+          setItems([]);
+          setWizardStep(1);
+          setView('create');
+        }}
+        className={`fixed z-20 ${
+          isRtl ? 'left-5' : 'right-5'
+        } bottom-20 w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-600/30 flex items-center justify-center active:scale-95 transition-transform min-w-[56px] min-h-[56px] focus:outline-none`}
+        title={isRtl ? 'إصدار فاتورة بيع جديدة' : 'New Sales Invoice'}
+        aria-label={isRtl ? 'إصدار فاتورة بيع جديدة' : 'New Sales Invoice'}
+      >
+        <Plus className="w-7 h-7" />
+      </button>
+
+      {/* Invoice Quick Action Modal */}
       {selectedInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/80 backdrop-blur-sm select-none">
           <div className={`w-full max-w-sm rounded-2xl border shadow-2xl flex flex-col max-h-[85vh] overflow-hidden ${
-            isDark ? 'bg-[#1C1F24] border-[#333842] text-[#F5F6F7]' : 'bg-white border-slate-200 text-slate-900'
+            isDark ? 'bg-[#1C1F24] border-[#333842] text-[#F5F6F7]' : 'bg-white border-gray-200 text-gray-900'
           }`}>
             <div className={`p-3 border-b flex items-center justify-between ${
-              isDark ? 'border-[#333842] bg-[#262A31]' : 'border-slate-200 bg-slate-100'
+              isDark ? 'border-[#333842] bg-[#262A31]' : 'border-gray-200 bg-gray-50'
             }`}>
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-blue-500" />
@@ -739,47 +873,57 @@ export const InvoicesScreen: React.FC = () => {
               </div>
               <button
                 onClick={() => setSelectedInvoice(null)}
-                className={isDark ? 'text-gray-400 hover:text-white' : 'text-slate-500 hover:text-slate-800'}
+                className={`p-1 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                  isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-black hover:bg-gray-100'
+                }`}
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 text-xs">
-              <div className={`flex justify-between items-center pb-2 border-b ${isDark ? 'border-[#333842]' : 'border-slate-200'}`}>
-                <span className={isDark ? 'text-gray-400' : 'text-slate-500'}>نوع الفاتورة:</span>
+              <div className={`flex justify-between items-center pb-2 border-b ${isDark ? 'border-[#333842]' : 'border-gray-100'}`}>
+                <span className={isDark ? 'text-gray-400' : 'text-gray-500'}>
+                  {isRtl ? 'نوع الفاتورة:' : 'Invoice Type:'}
+                </span>
                 <span className="font-bold text-blue-500">
-                  {selectedInvoice.invoiceType === 'cash' || selectedInvoice.isCashPayment ? 'نقدي (كاش)' : 'آجل (على الحساب)'}
+                  {selectedInvoice.invoiceType === 'cash' || selectedInvoice.isCashPayment
+                    ? (isRtl ? 'نقدي (كاش)' : 'Cash')
+                    : (isRtl ? 'آجل (على الحساب)' : 'Credit')}
                 </span>
               </div>
 
               <div>
-                <span className={`block text-[10px] ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>العميل:</span>
-                <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-900'}`}>{selectedInvoice.customerName}</span>
-                <span className={`font-mono block text-[11px] mt-0.5 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                  الرقم الضريبي: {selectedInvoice.customerTaxNumber}
+                <span className={`block text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'العميل:' : 'Customer:'}
+                </span>
+                <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{selectedInvoice.customerName}</span>
+                <span className={`font-mono block text-[11px] mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'الرقم الضريبي:' : 'Tax No:'} {selectedInvoice.customerTaxNumber}
                 </span>
               </div>
 
               {/* Items List */}
               <div>
-                <span className={`font-bold text-xs block mb-1.5 ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>أصناف الفاتورة:</span>
+                <span className={`font-bold text-xs block mb-1.5 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {isRtl ? 'أصناف الفاتورة:' : 'Invoice Items:'}
+                </span>
                 <div className="space-y-1.5">
                   {selectedInvoice.items.map((it, idx) => (
                     <div
                       key={idx}
-                      className={`p-2 rounded-lg border flex justify-between items-center ${
-                        isDark ? 'bg-[#121417] border-[#333842]' : 'bg-slate-50 border-slate-200'
+                      className={`p-2.5 rounded-xl border flex justify-between items-center ${
+                        isDark ? 'bg-[#121417] border-[#333842]' : 'bg-gray-50 border-gray-200'
                       }`}
                     >
                       <div>
-                        <div className={`font-bold truncate max-w-[180px] ${isDark ? 'text-white' : 'text-slate-900'}`}>{it.name}</div>
-                        <div className={`text-[10px] font-mono ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                        <div className={`font-bold truncate max-w-[180px] ${isDark ? 'text-white' : 'text-gray-900'}`}>{it.name}</div>
+                        <div className={`text-[10px] font-mono ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                           {it.enteredQty} × {it.unitPrice.toFixed(2)}
                         </div>
                       </div>
                       <div className="font-mono font-bold text-blue-500">
-                        {it.lineTotal.toFixed(2)} ر.س
+                        {it.lineTotal.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
                       </div>
                     </div>
                   ))}
@@ -794,30 +938,30 @@ export const InvoicesScreen: React.FC = () => {
                   <div className="flex items-center justify-between text-xs font-bold border-b border-amber-500/20 pb-1.5">
                     <div className="flex items-center gap-1.5">
                       <Banknote className="w-4 h-4 text-amber-500" />
-                      <span>بيانات السداد النقدي وتحديث العهدة:</span>
+                      <span>{isRtl ? 'بيانات السداد النقدي وتحديث العهدة:' : 'Cash Payment & Custody Update:'}</span>
                     </div>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                      {selectedInvoice.settlementStatus === 'paid' ? 'مسددة بالكامل' : 'سداد جزئي'}
+                      {selectedInvoice.settlementStatus === 'paid' ? (isRtl ? 'مسددة بالكامل' : 'Paid in Full') : (isRtl ? 'سداد جزئي' : 'Partially Paid')}
                     </span>
                   </div>
 
                   <div className="space-y-1 text-[11px] font-mono">
                     <div className="flex justify-between items-center">
-                      <span className="opacity-80">المبلغ المحصَّل نقداً:</span>
+                      <span className="opacity-80">{isRtl ? 'المبلغ المحصَّل نقداً:' : 'Collected Cash:'}</span>
                       <span className="font-bold text-amber-500">
-                        {(selectedInvoice.paidAmount || 0).toLocaleString()} ر.س
+                        {(selectedInvoice.paidAmount || 0).toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center">
-                      <span className="opacity-80">المتبقي على حساب العميل:</span>
+                      <span className="opacity-80">{isRtl ? 'المتبقي على حساب العميل:' : 'Remaining Balance:'}</span>
                       <span className="font-bold text-orange-500">
-                        {(selectedInvoice.remainingBalance !== undefined ? selectedInvoice.remainingBalance : (selectedInvoice.netDue - (selectedInvoice.paidAmount || 0))).toLocaleString()} ر.س
+                        {(selectedInvoice.remainingBalance !== undefined ? selectedInvoice.remainingBalance : (selectedInvoice.netDue - (selectedInvoice.paidAmount || 0))).toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
                       </span>
                     </div>
 
                     <div className="flex justify-between items-center text-[10px] pt-1.5 border-t border-amber-500/20">
-                      <span className="opacity-80">المندوب المسند للعهدة:</span>
+                      <span className="opacity-80">{isRtl ? 'المندوب المسند للعهدة:' : 'Assigned Rep:'}</span>
                       <span className="font-bold">{selectedInvoice.salesRep}</span>
                     </div>
                   </div>
@@ -826,18 +970,20 @@ export const InvoicesScreen: React.FC = () => {
 
               {/* Grand Total */}
               <div className={`p-3 rounded-xl border flex justify-between items-center font-mono ${
-                isDark ? 'bg-[#262A31] border-[#333842]' : 'bg-slate-100 border-slate-200'
+                isDark ? 'bg-[#262A31] border-[#333842]' : 'bg-gray-100 border-gray-200'
               }`}>
-                <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-slate-700'}`}>الإجمالي المستحق:</span>
+                <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                  {isRtl ? 'الإجمالي المستحق:' : 'Total Net:'}
+                </span>
                 <span className="text-base font-bold text-blue-500">
-                  {selectedInvoice.netDue.toFixed(2)} ر.س
+                  {selectedInvoice.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
                 </span>
               </div>
             </div>
 
-            {/* Quick Actions Footer (§6.1) */}
+            {/* Quick Actions Footer */}
             <div className={`p-3 border-t grid grid-cols-2 gap-2 ${
-              isDark ? 'border-[#333842] bg-[#262A31]' : 'border-slate-200 bg-slate-100'
+              isDark ? 'border-[#333842] bg-[#262A31]' : 'border-gray-200 bg-gray-50'
             }`}>
               <button
                 type="button"
@@ -845,24 +991,24 @@ export const InvoicesScreen: React.FC = () => {
                   openReceipt(selectedInvoice, 'invoice');
                   setSelectedInvoice(null);
                 }}
-                className="h-11 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                className="h-11 min-h-[44px] bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
               >
                 <Printer className="w-4 h-4" />
-                <span>طباعة حرارية</span>
+                <span>{isRtl ? 'طباعة حرارية' : 'Thermal Print'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => {
-                  showToast('تم تجهيز نسخة الفاتورة الرقمية بصيغة PDF', 'info');
+                  showToast(isRtl ? 'تم تجهيز نسخة الفاتورة الرقمية بصيغة PDF' : 'Digital PDF generated', 'info');
                   setSelectedInvoice(null);
                 }}
-                className={`h-11 border rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
-                  isDark ? 'border-[#333842] hover:bg-[#333842] text-gray-300' : 'border-slate-300 hover:bg-slate-200 text-slate-700'
+                className={`h-11 min-h-[44px] border rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors ${
+                  isDark ? 'border-[#333842] hover:bg-[#333842] text-gray-300' : 'border-gray-300 hover:bg-gray-100 text-gray-700'
                 }`}
               >
                 <Share2 className="w-4 h-4" />
-                <span>مشاركة PDF</span>
+                <span>{isRtl ? 'مشاركة PDF' : 'Share PDF'}</span>
               </button>
             </div>
           </div>

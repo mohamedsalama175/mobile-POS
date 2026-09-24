@@ -2,12 +2,10 @@ import React from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   ClipboardList,
-  RotateCcw,
   FileText,
-  CreditCard,
   Store,
-  Users,
-  Package
+  RotateCcw,
+  UserCheck
 } from 'lucide-react';
 import { soundService } from '../../services/sound';
 
@@ -22,55 +20,44 @@ export const BottomNavBar: React.FC = () => {
       labelEn: 'Orders',
       fullLabelAr: 'طلبات البيع',
       fullLabelEn: 'Sales Orders',
-      icon: ClipboardList
+      icon: ClipboardList,
+      isFab: false
     },
     {
       id: 1,
-      labelAr: 'المرتجعات',
-      labelEn: 'Returns',
-      fullLabelAr: 'مرتجعات طلبات البيع',
-      fullLabelEn: 'Sales Returns',
-      icon: RotateCcw
+      labelAr: 'الفواتير',
+      labelEn: 'Invoices',
+      fullLabelAr: 'فواتير المبيعات',
+      fullLabelEn: 'Sales Invoices',
+      icon: FileText,
+      isFab: false
     },
     {
       id: 2,
-      labelAr: 'الفواتير',
-      labelEn: 'Invoices',
-      fullLabelAr: 'فواتير طلبات البيع',
-      fullLabelEn: 'Sales Invoices',
-      icon: FileText
+      labelAr: 'نقطة بيع',
+      labelEn: 'POS',
+      fullLabelAr: 'نقطة البيع المباشر',
+      fullLabelEn: 'Point of Sale',
+      icon: Store,
+      isFab: true
     },
     {
       id: 3,
-      labelAr: 'مذكرات',
-      labelEn: 'Credit',
-      fullLabelAr: 'مذكرات الائتمان',
-      fullLabelEn: 'Credit Notes',
-      icon: CreditCard
+      labelAr: 'المرتجعات',
+      labelEn: 'Returns',
+      fullLabelAr: 'المرتجعات ومذكرات الائتمان',
+      fullLabelEn: 'Returns & Credit Notes',
+      icon: RotateCcw,
+      isFab: false
     },
     {
       id: 4,
-      labelAr: 'نقطة البيع',
-      labelEn: 'POS',
-      fullLabelAr: 'عمليات نقطة البيع',
-      fullLabelEn: 'Point of Sale',
-      icon: Store
-    },
-    {
-      id: 5,
-      labelAr: 'المندوب',
-      labelEn: 'Rep',
-      fullLabelAr: 'لوحة المندوب والتحصيل',
-      fullLabelEn: 'Representative & Collections',
-      icon: Users
-    },
-    {
-      id: 6,
-      labelAr: 'الكتالوج',
-      labelEn: 'Catalog',
-      fullLabelAr: 'كتالوج الأصناف (IndexedDB)',
-      fullLabelEn: 'Product Catalog',
-      icon: Package
+      labelAr: 'حسابي',
+      labelEn: 'My Account',
+      fullLabelAr: 'حساب المندوب والتحصيلات',
+      fullLabelEn: 'Representative & Cash',
+      icon: UserCheck,
+      isFab: false
     }
   ];
 
@@ -85,6 +72,43 @@ export const BottomNavBar: React.FC = () => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.id;
 
+        if (tab.isFab) {
+          return (
+            <button
+              key={tab.id}
+              id={`bottom-nav-tab-${tab.id}`}
+              onClick={() => {
+                soundService.playClick();
+                setActiveTab(tab.id);
+              }}
+              className="relative -top-4 flex flex-col items-center justify-center min-w-[56px] min-h-[56px] focus:outline-none active:scale-95 transition-transform"
+              title={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
+              aria-label={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
+            >
+              <div
+                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all border-4 ${
+                  isDark ? 'border-[#262A31]' : 'border-white'
+                } ${
+                  isActive
+                    ? 'bg-gradient-to-tr from-blue-600 to-indigo-500 text-white ring-2 ring-blue-400 ring-offset-1'
+                    : 'bg-gradient-to-tr from-blue-500 to-indigo-600 text-white hover:brightness-110'
+                }`}
+              >
+                <Icon className="w-6 h-6" />
+              </div>
+              <span
+                className={`text-[10px] font-bold mt-0.5 whitespace-nowrap ${
+                  isActive
+                    ? isDark ? 'text-blue-400' : 'text-blue-600'
+                    : isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}
+              >
+                {language === 'ar' ? tab.labelAr : tab.labelEn}
+              </span>
+            </button>
+          );
+        }
+
         return (
           <button
             key={tab.id}
@@ -93,12 +117,13 @@ export const BottomNavBar: React.FC = () => {
               soundService.playClick();
               setActiveTab(tab.id);
             }}
-            className={`flex-1 flex flex-col items-center justify-center h-full py-1 min-w-0 transition-all active:scale-95 ${
+            className={`flex-1 flex flex-col items-center justify-center h-full py-1 min-w-[44px] min-h-[44px] transition-all active:scale-95 ${
               isActive
                 ? isDark ? 'text-[#3B82F6]' : 'text-[#1F242F]'
                 : isDark ? 'text-[#9AA1AC] hover:text-gray-200' : 'text-gray-400 hover:text-gray-700'
             }`}
             title={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
+            aria-label={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
           >
             <div className={`relative p-1 rounded-lg ${isActive ? (isDark ? 'bg-blue-500/15' : 'bg-gray-100') : ''}`}>
               <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />

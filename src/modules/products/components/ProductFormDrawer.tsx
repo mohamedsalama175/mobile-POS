@@ -217,7 +217,7 @@ export const ProductFormDrawer: React.FC<ProductFormDrawerProps> = ({
             type="number"
             step="0.01"
             min="0"
-            label={isRtl ? 'سعر البيع (ر.س)' : 'Unit Price (SAR)'}
+            label={isRtl ? 'سعر البيع (ج.م)' : 'Unit Price (EGP)'}
             required
             leftIcon={<DollarSign className="w-4 h-4" />}
             value={formData.unitPrice}

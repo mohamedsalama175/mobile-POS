@@ -263,7 +263,7 @@ export const ProductCatalogScreen: React.FC = () => {
                       </span>
                     </>
                   }
-                  trailingTop={`${prod.unitPrice.toFixed(2)} ${isRtl ? 'ر.س' : 'SAR'}`}
+                  trailingTop={`${prod.unitPrice.toFixed(2)} ${isRtl ? 'ج.م' : 'EGP'}`}
                   trailingBottom={`#${prod.code}`}
                   trailingAction={
                     <button

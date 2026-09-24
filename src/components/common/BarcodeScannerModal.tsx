@@ -127,7 +127,7 @@ export const BarcodeScannerModal: React.FC = () => {
                   </div>
                 </div>
                 <div className="shrink-0 flex items-center gap-1 text-blue-400 text-[11px] font-bold">
-                  <span>{prod.unitPrice} ر.س</span>
+                  <span>{prod.unitPrice} ج.م</span>
                   <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 </div>
               </button>

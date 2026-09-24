@@ -196,10 +196,10 @@ export const CustomerDirectoryScreen: React.FC = () => {
                   }
                   trailingTop={
                     <span className={cust.currentBalance > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
-                      {cust.currentBalance.toFixed(2)} {isRtl ? 'ر.س' : 'SAR'}
+                      {cust.currentBalance.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
                     </span>
                   }
-                  trailingBottom={`حد: ${cust.creditLimit.toLocaleString()} ${isRtl ? 'ر.س' : 'SAR'}`}
+                  trailingBottom={`حد: ${cust.creditLimit.toLocaleString()} ${isRtl ? 'ج.م' : 'EGP'}`}
                   trailingAction={
                     <button
                       type="button"

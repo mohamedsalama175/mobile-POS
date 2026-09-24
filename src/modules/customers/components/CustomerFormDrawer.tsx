@@ -181,7 +181,7 @@ export const CustomerFormDrawer: React.FC<CustomerFormDrawerProps> = ({
             type="number"
             min="0"
             step="1000"
-            label={isRtl ? 'حد الائتمان (ر.س)' : 'Credit Limit (SAR)'}
+            label={isRtl ? 'حد الائتمان (ج.م)' : 'Credit Limit (EGP)'}
             required
             leftIcon={<DollarSign className="w-4 h-4" />}
             value={formData.creditLimit}
@@ -192,7 +192,7 @@ export const CustomerFormDrawer: React.FC<CustomerFormDrawerProps> = ({
           <Input
             type="number"
             step="0.01"
-            label={isRtl ? 'الرصيد الافتتاحي / الحالي (ر.س)' : 'Current Balance (SAR)'}
+            label={isRtl ? 'الرصيد الافتتاحي / الحالي (ج.م)' : 'Current Balance (EGP)'}
             leftIcon={<DollarSign className="w-4 h-4" />}
             value={formData.currentBalance}
             onChange={(e) => setFormData({ ...formData, currentBalance: parseFloat(e.target.value) || 0 })}

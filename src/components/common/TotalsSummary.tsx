@@ -64,42 +64,42 @@ export const TotalsSummary: React.FC<TotalsSummaryProps> = ({
           <div className={`flex justify-between items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
             <span>{language === 'ar' ? 'اجمالي القيمة' : 'Gross Total'}</span>
             <span className={`font-mono tabular-nums font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {grossTotal.toFixed(2)} ر.س
+              {grossTotal.toFixed(2)} ج.م
             </span>
           </div>
 
           <div className={`flex justify-between items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
             <span>{language === 'ar' ? 'اجمالي الخصم' : 'Total Discount'}</span>
             <span className={`font-mono tabular-nums font-bold ${isDark ? 'text-amber-400' : 'text-amber-600'}`}>
-              - {totalDiscount.toFixed(2)} ر.س
+              - {totalDiscount.toFixed(2)} ج.م
             </span>
           </div>
 
           <div className={`flex justify-between items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
             <span>{language === 'ar' ? 'الاجمالي بعد الخصم' : 'Total After Discount'}</span>
             <span className={`font-mono tabular-nums font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {totalAfterDiscount.toFixed(2)} ر.س
+              {totalAfterDiscount.toFixed(2)} ج.م
             </span>
           </div>
 
           <div className={`flex justify-between items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
             <span>{language === 'ar' ? 'اجمالي الضريبة (14%)' : 'Total Tax (14%)'}</span>
             <span className={`font-mono tabular-nums font-semibold ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
-              + {totalTax.toFixed(2)} ر.س
+              + {totalTax.toFixed(2)} ج.م
             </span>
           </div>
 
           <div className={`flex justify-between items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
             <span>{language === 'ar' ? 'الاجمالي بعد الضريبة' : 'Total After Tax'}</span>
             <span className={`font-mono tabular-nums font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {totalAfterTax.toFixed(2)} ر.س
+              {totalAfterTax.toFixed(2)} ج.م
             </span>
           </div>
 
           <div className={`flex justify-between items-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
             <span>{language === 'ar' ? 'اجمالي ضريبة الخصم من المبيع (1%)' : 'Withholding Tax (1%)'}</span>
             <span className={`font-mono tabular-nums font-bold ${isDark ? 'text-rose-400' : 'text-rose-600'}`}>
-              - {withholdingTax.toFixed(2)} ر.س
+              - {withholdingTax.toFixed(2)} ج.م
             </span>
           </div>
         </div>
@@ -129,7 +129,7 @@ export const TotalsSummary: React.FC<TotalsSummaryProps> = ({
             {netDue.toFixed(2)}
           </span>
           <span className="text-xs text-gray-400 font-bold ml-1 mr-1">
-            {language === 'ar' ? 'ر.س' : 'SAR'}
+            {language === 'ar' ? 'ج.م' : 'EGP'}
           </span>
         </div>
       </div>

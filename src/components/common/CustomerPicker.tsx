@@ -212,7 +212,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
               <span className={`font-mono font-bold block mt-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
                 {selectedCustomer.creditLimit >= 9999999
                   ? (language === 'ar' ? 'غير محدود (نقدي)' : 'Unlimited (Cash)')
-                  : `${selectedCustomer.creditLimit.toLocaleString()} ر.س`}
+                  : `${selectedCustomer.creditLimit.toLocaleString()} ج.م`}
               </span>
             </div>
           </div>

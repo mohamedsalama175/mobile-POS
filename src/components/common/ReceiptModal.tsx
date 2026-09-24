@@ -132,7 +132,7 @@ export const ReceiptModal: React.FC = () => {
                       {it.enteredQty} × {it.unitPrice.toFixed(2)}
                       {it.discount > 0 ? ` (خصم ${it.discount})` : ''}
                     </span>
-                    <span className="font-bold">{it.lineTotal.toFixed(2)} ر.س</span>
+                    <span className="font-bold">{it.lineTotal.toFixed(2)} ج.م</span>
                   </div>
                 </div>
               ))}
@@ -143,21 +143,21 @@ export const ReceiptModal: React.FC = () => {
           <div className="py-2.5 space-y-1 text-[11px] border-b border-dashed border-gray-400">
             <div className="flex justify-between">
               <span>المجموع الأساسي:</span>
-              <span>{(receiptData.grossTotal || 0).toFixed(2)} ر.س</span>
+              <span>{(receiptData.grossTotal || 0).toFixed(2)} ج.م</span>
             </div>
             {(receiptData.totalDiscount || 0) > 0 && (
               <div className="flex justify-between text-gray-600">
                 <span>إجمالي الخصم:</span>
-                <span>- {(receiptData.totalDiscount || 0).toFixed(2)} ر.س</span>
+                <span>- {(receiptData.totalDiscount || 0).toFixed(2)} ج.م</span>
               </div>
             )}
             <div className="flex justify-between">
               <span>ضريبة القيمة المضافة (14%):</span>
-              <span>+ {(receiptData.totalTax || 0).toFixed(2)} ر.س</span>
+              <span>+ {(receiptData.totalTax || 0).toFixed(2)} ج.م</span>
             </div>
             <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-gray-300">
               <span>الإجمالي المستحق:</span>
-              <span>{(receiptData.netDue || 0).toFixed(2)} ر.س</span>
+              <span>{(receiptData.netDue || 0).toFixed(2)} ج.م</span>
             </div>
 
             {receiptData.amountPaid !== undefined && (
@@ -166,11 +166,11 @@ export const ReceiptModal: React.FC = () => {
                   <span>
                     المدفوع ({receiptData.paymentMethod === 'card' ? 'بطاقة ائتمان' : 'نقدي'}):
                   </span>
-                  <span>{receiptData.amountPaid.toFixed(2)} ر.س</span>
+                  <span>{receiptData.amountPaid.toFixed(2)} ج.م</span>
                 </div>
                 <div className="flex justify-between text-emerald-700 font-bold">
                   <span>المتبقي (الـفـكـة):</span>
-                  <span>{(receiptData.changeDue || 0).toFixed(2)} ر.س</span>
+                  <span>{(receiptData.changeDue || 0).toFixed(2)} ج.م</span>
                 </div>
               </>
             )}

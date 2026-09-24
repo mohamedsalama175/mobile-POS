@@ -6,7 +6,6 @@ import { BottomNavBar } from './components/layout/BottomNavBar';
 import { OrdersScreen } from './components/screens/OrdersScreen';
 import { ReturnsScreen } from './components/screens/ReturnsScreen';
 import { InvoicesScreen } from './components/screens/InvoicesScreen';
-import { CreditNotesScreen } from './components/screens/CreditNotesScreen';
 import { PosScreen } from './components/screens/PosScreen';
 import { RepresentativeScreen } from './components/screens/RepresentativeScreen';
 import { ProductCatalogScreen } from './modules/products/ProductCatalogScreen';
@@ -28,13 +27,12 @@ const AppContent: React.FC = () => {
         {/* Active Screen Module Container */}
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
           {activeTab === 0 && <OrdersScreen />}
-          {activeTab === 1 && <ReturnsScreen />}
-          {activeTab === 2 && <InvoicesScreen />}
-          {activeTab === 3 && <CreditNotesScreen />}
-          {activeTab === 4 && <PosScreen />}
-          {activeTab === 5 && <RepresentativeScreen />}
-          {activeTab === 6 && <ProductCatalogScreen />}
-          {activeTab === 7 && <CustomerDirectoryScreen />}
+          {activeTab === 1 && <InvoicesScreen />}
+          {activeTab === 2 && <PosScreen />}
+          {activeTab === 3 && <ReturnsScreen />}
+          {activeTab === 4 && <RepresentativeScreen />}
+          {activeTab === 5 && <ProductCatalogScreen />}
+          {activeTab === 6 && <CustomerDirectoryScreen />}
         </main>
 
         {/* 5-Tab Persistent Bottom Navigation Bar (§1 & §3.3) */}
