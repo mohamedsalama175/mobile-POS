@@ -92,12 +92,13 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
   return (
     <header
       id="eda50-top-bar"
-      className={`sticky top-0 z-30 flex items-center justify-between h-14 px-3 border-b select-none transition-colors ${
+      className={`shrink-0 z-30 h-14 px-3 sm:px-6 border-b select-none transition-colors ${
         isDark ? 'bg-[#262A31] border-[#333842] text-[#F5F6F7]' : 'bg-[#FFFFFF] border-[#E5E7EB] text-[#111827]'
       }`}
     >
-      {/* Title & Brand */}
-      <div className="flex items-center gap-2 overflow-hidden">
+      <div className="max-w-7xl mx-auto w-full h-full flex items-center justify-between">
+        {/* Title & Brand */}
+        <div className="flex items-center gap-2 overflow-hidden">
         <div className="flex flex-col min-w-0">
           <span className="text-[10px] font-semibold tracking-wider text-blue-400 uppercase">
             EDA50 • {language === 'ar' ? 'دار السلام' : 'Dar Al-Salam'}
@@ -348,8 +349,8 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
                   <span className="flex items-center gap-2">
                     {handheldMode ? <Maximize2 className="w-4 h-4 text-teal-400" /> : <Smartphone className="w-4 h-4 text-teal-400" />}
                     {handheldMode
-                      ? (language === 'ar' ? 'عرض ملء الشاشة' : 'Full Screen View')
-                      : (language === 'ar' ? 'هيكل جهاز EDA50' : 'EDA50 Handheld Frame')}
+                      ? (language === 'ar' ? 'عرض صفحة عادية (بدون إطار)' : 'Regular Page (No Border)')
+                      : (language === 'ar' ? 'هيكل جهاز EDA50 (محاكي)' : 'EDA50 Frame Simulator')}
                   </span>
                 </button>
 
@@ -383,6 +384,7 @@ export const TopAppBar: React.FC<TopAppBarProps> = ({
             </>
           )}
         </div>
+      </div>
       </div>
     </header>
   );

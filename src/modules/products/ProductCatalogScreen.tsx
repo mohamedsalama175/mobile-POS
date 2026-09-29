@@ -73,7 +73,8 @@ export const ProductCatalogScreen: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto p-3 sm:p-5 space-y-4 select-none">
+    <div className="flex-1 w-full h-full overflow-y-auto p-3 sm:p-4 md:p-6 select-none touch-scroll pb-24">
+      <div className="max-w-7xl mx-auto space-y-4">
       {/* 1. Header Bar: Title, Count, Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-200/80 dark:border-[#2D333F]">
         <div className="flex items-center gap-3">
@@ -219,8 +220,8 @@ export const ProductCatalogScreen: React.FC = () => {
             onAction={handleOpenAdd}
           />
         ) : viewMode === 'list' ? (
-          // Standard Photo 2 List View
-          <div className="space-y-2">
+          // Responsive List View: 1-col on mobile, 2-col on md, 3-col on xl
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
             {products.map((prod) => {
               const isOutOfStock = prod.availableQty <= 0;
               return (
@@ -283,8 +284,8 @@ export const ProductCatalogScreen: React.FC = () => {
             })}
           </div>
         ) : (
-          // Responsive Grid View (using relative units, no fixed widths)
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          // Responsive Grid View: 2-col on mobile, 3-col on sm, 4 on md, 5 on lg, 6 on xl
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
             {products.map((prod) => (
               <ProductCardGrid
                 key={prod.id}
@@ -306,6 +307,7 @@ export const ProductCatalogScreen: React.FC = () => {
         onSave={handleSaveProduct}
         language={language}
       />
+      </div>
     </div>
   );
 };

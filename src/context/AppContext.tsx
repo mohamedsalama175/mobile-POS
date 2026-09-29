@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Language, Theme, UserSession } from '../types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Language, Theme, UserSession, PrinterSettings } from '../types';
 import { storageService } from '../services/storage';
 import { soundService } from '../services/sound';
+import { printerService } from '../services/printerService';
+
 
 interface ToastMessage {
   id: string;
@@ -32,9 +34,13 @@ interface AppContextType {
   // Receipt modal state
   isReceiptOpen: boolean;
   receiptData: any | null;
-  receiptType: 'pos' | 'invoice' | 'order' | null;
-  openReceipt: (data: any, type: 'pos' | 'invoice' | 'order') => void;
+  receiptType: 'pos' | 'invoice' | 'order' | 'return' | 'credit_note' | null;
+  openReceipt: (data: any, type: 'pos' | 'invoice' | 'order' | 'return' | 'credit_note') => void;
   closeReceipt: () => void;
+  // Printer settings
+  printerSettings: PrinterSettings;
+  updatePrinterSettings: (settings: Partial<PrinterSettings>) => void;
+
   // Outbox modal state
   isOutboxOpen: boolean;
   setIsOutboxOpen: (open: boolean) => void;
@@ -47,6 +53,9 @@ interface AppContextType {
   toasts: ToastMessage[];
   toast: ToastMessage | null;
   showToast: (msg: string, type?: 'success' | 'error' | 'info' | 'warning') => void;
+  // Hide bottom nav for wizards/full-screen flows
+  hideBottomNav: boolean;
+  setHideBottomNav: (hide: boolean) => void;
   // Physical trigger simulation & active handler
   fireHardwareTrigger: () => void;
   registerScannerHandler: (handler: (code: string) => void) => () => void;
@@ -79,11 +88,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return 'dark';
   });
-  const [activeTab, setActiveTab] = useState<number>(0); // 0: Orders, 1: Returns, 2: Invoices, 3: Credit Notes, 4: POS
+  const [activeTab, setActiveTabState] = useState<number>(0); // 0: Orders, 1: Returns, 2: Invoices, 3: Credit Notes, 4: POS
   const [isOnline, setIsOnlineState] = useState<boolean>(true);
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(0);
   const [currentUser, setCurrentUser] = useState<UserSession>(DEFAULT_USER);
-  const [handheldMode, setHandheldMode] = useState<boolean>(true); // EDA50 frame enabled by default
+  const [handheldMode, setHandheldModeState] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('eda50_handheld_frame');
+      if (saved !== null) return saved === 'true';
+    }
+    return false; // Default: regular full page (border removed) for real Honeywell devices
+  });
+
+  const setHandheldMode = (val: boolean) => {
+    setHandheldModeState(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('eda50_handheld_frame', String(val));
+    }
+  };
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Modals
@@ -92,9 +114,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const registeredScannerHandlerRef = React.useRef<((code: string) => void) | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [receiptData, setReceiptData] = useState<any | null>(null);
-  const [receiptType, setReceiptType] = useState<'pos' | 'invoice' | 'order' | null>(null);
+  const [receiptType, setReceiptType] = useState<'pos' | 'invoice' | 'order' | 'return' | 'credit_note' | null>(null);
+  const [printerSettings, setPrinterSettings] = useState<PrinterSettings>(() => printerService.loadSettings());
   const [isOutboxOpen, setIsOutboxOpen] = useState(false);
   const [isPinOpen, setIsPinOpen] = useState(false);
+  const [hideBottomNav, setHideBottomNavState] = useState(false);
+
+  const updatePrinterSettings = (newSettings: Partial<PrinterSettings>) => {
+    const updated = printerService.saveSettings(newSettings);
+    setPrinterSettings({ ...updated });
+  };
+
+  // Stable callback so useEffect deps in screens don't fire on every render
+  const setHideBottomNav = useCallback((hide: boolean) => {
+    setHideBottomNavState(hide);
+  }, []);
+
+  // Whenever the active tab changes, always reset the bottom nav visibility.
+  // This prevents the nav staying hidden when the user switches tabs while
+  // inside a wizard / create flow.
+  const setActiveTab = useCallback((tab: number) => {
+    setHideBottomNavState(false);
+    setActiveTabState(tab);
+  }, []);
 
   useEffect(() => {
     // Initial sync and count
@@ -165,7 +207,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveScanCallback(null);
   };
 
-  const openReceipt = (data: any, type: 'pos' | 'invoice' | 'order') => {
+  const openReceipt = (data: any, type: 'pos' | 'invoice' | 'order' | 'return' | 'credit_note') => {
     setReceiptData(data);
     setReceiptType(type);
     setIsReceiptOpen(true);
@@ -231,6 +273,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // Hardware wedge barcode scanner listener (for physical Honeywell EDA50/Zebra triggers)
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = 0;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore modifier keys
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+      const currentTime = Date.now();
+      const diff = currentTime - lastKeyTime;
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        const scannedCode = buffer.trim();
+        buffer = '';
+
+        if (scannedCode.length >= 2) {
+          // If scanner modal is open or active callback is waiting
+          if (activeScanCallback) {
+            e.preventDefault();
+            activeScanCallback(scannedCode);
+            closeScanner();
+            soundService.playScanSuccess();
+            return;
+          }
+
+          // If a screen registered its scanner handler
+          if (registeredScannerHandlerRef.current) {
+            const target = e.target as HTMLElement | null;
+            const isDedicatedInput =
+              target?.id === 'line-item-code-input' || target?.id === 'scanner-manual-input';
+
+            if (!isDedicatedInput) {
+              e.preventDefault();
+              registeredScannerHandlerRef.current(scannedCode);
+              soundService.playScanSuccess();
+            }
+          }
+        }
+        return;
+      }
+
+      // Single printable character
+      if (e.key.length === 1) {
+        // Hardware wedge scanners send rapid keystrokes (< 50ms)
+        if (diff > 100 && buffer.length > 0) {
+          buffer = '';
+        }
+        buffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeScanCallback]);
+
   return (
     <AppContext.Provider
       value={{
@@ -257,6 +358,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         receiptType,
         openReceipt,
         closeReceipt,
+        printerSettings,
+        updatePrinterSettings,
         isOutboxOpen,
         setIsOutboxOpen,
         isPinOpen,
@@ -265,6 +368,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toasts,
         toast: toasts[0] || null,
         showToast,
+        hideBottomNav,
+        setHideBottomNav,
         fireHardwareTrigger,
         registerScannerHandler
       }}

@@ -10,8 +10,12 @@ import {
 import { soundService } from '../../services/sound';
 
 export const BottomNavBar: React.FC = () => {
-  const { activeTab, setActiveTab, language, theme } = useApp();
+  const { activeTab, setActiveTab, language, theme, hideBottomNav } = useApp();
   const isDark = theme === 'dark';
+
+  if (hideBottomNav) {
+    return null;
+  }
 
   const tabs = [
     {
@@ -64,15 +68,52 @@ export const BottomNavBar: React.FC = () => {
   return (
     <nav
       id="eda50-bottom-nav"
-      className={`sticky bottom-0 z-30 flex items-center justify-around h-16 border-t px-1 select-none transition-colors ${
-        isDark ? 'bg-[#262A31] border-[#333842]' : 'bg-white border-[#E5E7EB]'
+      className={`shrink-0 h-16 border-t px-2 select-none transition-colors ${
+        isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-md'
       }`}
     >
-      {tabs.map((tab) => {
-        const Icon = tab.icon;
-        const isActive = activeTab === tab.id;
+      <div className="w-full h-full flex items-center justify-between gap-1">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
 
-        if (tab.isFab) {
+          if (tab.isFab) {
+            return (
+              <button
+                key={tab.id}
+                id={`bottom-nav-tab-${tab.id}`}
+                onClick={() => {
+                  soundService.playClick();
+                  setActiveTab(tab.id);
+                }}
+                className="flex-1 flex flex-col items-center justify-center h-full py-1 min-w-[52px] min-h-[48px] focus:outline-none active:scale-95 transition-transform"
+                title={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
+                aria-label={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
+              >
+                <div
+                  className={`w-11 h-8 rounded-xl flex items-center justify-center transition-all ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-md ring-2 ring-blue-400'
+                      : isDark
+                      ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span
+                  className={`text-[10px] font-bold mt-0.5 whitespace-nowrap ${
+                    isActive
+                      ? isDark ? 'text-blue-400' : 'text-blue-600'
+                      : isDark ? 'text-gray-300' : 'text-gray-700'
+                  }`}
+                >
+                  {language === 'ar' ? tab.labelAr : tab.labelEn}
+                </span>
+              </button>
+            );
+          }
+
           return (
             <button
               key={tab.id}
@@ -81,63 +122,32 @@ export const BottomNavBar: React.FC = () => {
                 soundService.playClick();
                 setActiveTab(tab.id);
               }}
-              className="relative -top-4 flex flex-col items-center justify-center min-w-[56px] min-h-[56px] focus:outline-none active:scale-95 transition-transform"
+              className={`flex-1 flex flex-col items-center justify-center h-full py-1 min-w-[48px] min-h-[48px] transition-all active:scale-95 ${
+                isActive
+                  ? isDark ? 'text-blue-400' : 'text-blue-600'
+                  : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-900'
+              }`}
               title={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
               aria-label={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
             >
               <div
-                className={`w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all border-4 ${
-                  isDark ? 'border-[#262A31]' : 'border-white'
-                } ${
-                  isActive
-                    ? 'bg-gradient-to-tr from-blue-600 to-indigo-500 text-white ring-2 ring-blue-400 ring-offset-1'
-                    : 'bg-gradient-to-tr from-blue-500 to-indigo-600 text-white hover:brightness-110'
+                className={`relative px-3 py-1 rounded-xl transition-colors ${
+                  isActive ? (isDark ? 'bg-blue-500/15' : 'bg-blue-50') : ''
                 }`}
               >
-                <Icon className="w-6 h-6" />
+                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
               </div>
               <span
-                className={`text-[10px] font-bold mt-0.5 whitespace-nowrap ${
-                  isActive
-                    ? isDark ? 'text-blue-400' : 'text-blue-600'
-                    : isDark ? 'text-gray-400' : 'text-gray-600'
+                className={`text-[10px] font-medium tracking-tight truncate max-w-full px-0.5 mt-0.5 whitespace-nowrap ${
+                  isActive ? 'font-bold' : ''
                 }`}
               >
                 {language === 'ar' ? tab.labelAr : tab.labelEn}
               </span>
             </button>
           );
-        }
-
-        return (
-          <button
-            key={tab.id}
-            id={`bottom-nav-tab-${tab.id}`}
-            onClick={() => {
-              soundService.playClick();
-              setActiveTab(tab.id);
-            }}
-            className={`flex-1 flex flex-col items-center justify-center h-full py-1 min-w-[44px] min-h-[44px] transition-all active:scale-95 ${
-              isActive
-                ? isDark ? 'text-[#3B82F6]' : 'text-[#1F242F]'
-                : isDark ? 'text-[#9AA1AC] hover:text-gray-200' : 'text-gray-400 hover:text-gray-700'
-            }`}
-            title={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
-            aria-label={language === 'ar' ? tab.fullLabelAr : tab.fullLabelEn}
-          >
-            <div className={`relative p-1 rounded-lg ${isActive ? (isDark ? 'bg-blue-500/15' : 'bg-gray-100') : ''}`}>
-              <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
-            </div>
-            <span
-              className={`text-[11px] font-medium tracking-tight truncate max-w-full px-0.5 mt-0.5 whitespace-nowrap ${
-                isActive ? (isDark ? 'font-bold text-[#3B82F6]' : 'font-bold text-[#1F242F]') : ''
-              }`}
-            >
-              {language === 'ar' ? tab.labelAr : tab.labelEn}
-            </span>
-          </button>
-        );
-      })}
+        })}
+      </div>
     </nav>
   );
 };

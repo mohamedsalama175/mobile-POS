@@ -81,13 +81,13 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
                   ? 'اكتب اسم العميل، الرقم الضريبي، أو رقم الهاتف...'
                   : 'Search by name, tax number, or phone...'
               }
-              className={`w-full h-12 pl-10 pr-10 text-sm rounded-xl border outline-none transition-colors ${
+              className={`w-full h-12 ps-11 pe-11 text-xs sm:text-sm rounded-xl border outline-none transition-colors ${
                 isDark
                   ? 'bg-[#1C1F24] border-[#333842] text-[#F5F6F7] focus:border-blue-500'
-                  : 'bg-white border-gray-200 text-gray-900 focus:border-[#252B37]'
+                  : 'bg-white border-gray-200 text-gray-900 focus:border-blue-600'
               }`}
             />
-            <Search className={`w-5 h-5 absolute ${language === 'ar' ? 'right-3' : 'left-3'} top-3.5 text-gray-400 pointer-events-none`} />
+            <Search className="w-5 h-5 absolute start-3.5 top-3.5 text-gray-400 pointer-events-none" />
 
             {searchTerm && (
               <button
@@ -96,7 +96,7 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
                   setSearchTerm('');
                   setIsOpen(false);
                 }}
-                className={`absolute ${language === 'ar' ? 'left-3' : 'right-3'} top-3.5 text-gray-400 hover:text-white`}
+                className="absolute end-3.5 top-3.5 p-0.5 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -127,13 +127,13 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
                         setSearchTerm('');
                         setIsOpen(false);
                       }}
-                      className={`w-full text-left p-3 border-b transition-colors flex items-center justify-between ${
+                      className={`w-full text-start p-3 border-b transition-colors flex items-center justify-between ${
                         isDark
                           ? 'border-[#262A31] hover:bg-[#262A31] text-gray-200'
                           : 'border-gray-100 hover:bg-gray-50 text-gray-800'
                       }`}
                     >
-                      <div className="min-w-0 pr-2">
+                      <div className="min-w-0 pe-2">
                         <div className="font-semibold text-xs truncate">{c.name}</div>
                         <div className="text-[11px] text-gray-400 flex items-center gap-2 mt-0.5 font-mono">
                           <span>{c.taxNumber}</span>
@@ -141,11 +141,11 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
                           <span>{c.phone}</span>
                         </div>
                       </div>
-                      <div className="text-right shrink-0">
+                      <div className="text-end shrink-0">
                         <span className="text-[10px] text-gray-400 block">
                           {language === 'ar' ? 'الحد:' : 'Limit:'}
                         </span>
-                        <span className="text-xs font-mono font-bold text-blue-400">
+                        <span className="text-xs font-mono font-bold text-blue-500">
                           {c.creditLimit >= 9999999 ? '∞' : c.creditLimit.toLocaleString()}
                         </span>
                       </div>
@@ -162,54 +162,54 @@ export const CustomerPicker: React.FC<CustomerPickerProps> = ({
       {selectedCustomer && (
         <div
           id="customer-details-card"
-          className={`p-3 rounded-xl border transition-colors ${
-            isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-gray-50 border-gray-200'
+          className={`p-3.5 rounded-2xl border transition-colors ${
+            isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <div className={`flex items-center gap-1.5 text-xs font-semibold ${isDark ? 'text-blue-400' : 'text-gray-900'}`}>
-              <UserCheck className="w-4 h-4 text-emerald-600" />
+          <div className="flex items-center justify-between mb-2 pb-2 border-b border-inherit">
+            <div className={`flex items-center gap-1.5 text-xs font-bold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>
+              <UserCheck className="w-4 h-4 text-emerald-500" />
               <span>{language === 'ar' ? 'العميل المحدد' : 'Selected Customer'}</span>
             </div>
             {selectedCustomer.cardNumber && (
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
-                isDark ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-200 text-gray-700'
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded-lg font-bold border ${
+                isDark ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-100 text-blue-600'
               }`}>
                 {language === 'ar' ? `بطاقة: ${selectedCustomer.cardNumber}` : `Card: ${selectedCustomer.cardNumber}`}
               </span>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <span className="text-[11px] text-gray-500 block">
+              <span className="text-[11px] text-gray-500 block mb-0.5">
                 {language === 'ar' ? 'اسم العميل' : 'Customer Name'}
               </span>
-              <span className={`font-bold truncate block mt-0.5 ${isDark ? 'text-[#F5F6F7]' : 'text-gray-900'}`}>
+              <span className={`font-bold truncate block ${isDark ? 'text-[#F5F6F7]' : 'text-gray-900'}`}>
                 {selectedCustomer.name}
               </span>
             </div>
             <div>
-              <span className="text-[11px] text-gray-500 block">
+              <span className="text-[11px] text-gray-500 block mb-0.5">
                 {language === 'ar' ? 'الرقم الضريبي' : 'Tax Number'}
               </span>
-              <span className={`font-mono font-bold truncate block mt-0.5 ${isDark ? 'text-[#F5F6F7]' : 'text-gray-900'}`}>
+              <span className={`font-mono font-bold truncate block ${isDark ? 'text-[#F5F6F7]' : 'text-gray-900'}`}>
                 {selectedCustomer.taxNumber}
               </span>
             </div>
             <div>
-              <span className="text-[11px] text-gray-500 block">
+              <span className="text-[11px] text-gray-500 block mb-0.5">
                 {language === 'ar' ? 'رقم الهاتف' : 'Phone Number'}
               </span>
-              <span className={`font-mono block mt-0.5 ${isDark ? 'text-[#F5F6F7]' : 'text-gray-800'}`}>
+              <span className={`font-mono block ${isDark ? 'text-[#F5F6F7]' : 'text-gray-800'}`}>
                 {selectedCustomer.phone}
               </span>
             </div>
             <div>
-              <span className="text-[11px] text-gray-500 block">
+              <span className="text-[11px] text-gray-500 block mb-0.5">
                 {language === 'ar' ? 'الحد الائتماني' : 'Credit Limit'}
               </span>
-              <span className={`font-mono font-bold block mt-0.5 ${isDark ? 'text-emerald-400' : 'text-emerald-700'}`}>
+              <span className={`font-mono font-bold block ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`}>
                 {selectedCustomer.creditLimit >= 9999999
                   ? (language === 'ar' ? 'غير محدود (نقدي)' : 'Unlimited (Cash)')
                   : `${selectedCustomer.creditLimit.toLocaleString()} ج.م`}

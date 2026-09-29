@@ -166,7 +166,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
     >
       <div
         id="add-item-modal"
-        className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
+        className={`w-full max-w-md sm:max-w-xl md:max-w-2xl rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] ${
           isDark ? 'bg-[#1C1F24] border-[#333842] text-[#F5F6F7]' : 'bg-white border-gray-200 text-gray-900'
         }`}
       >
@@ -291,7 +291,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
               </div>
 
               {/* Products Catalog List */}
-              <div className="space-y-2 max-h-[58vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[58vh] overflow-y-auto pr-1">
                 {filteredProducts.length === 0 ? (
                   <div className="p-8 text-center text-gray-400 text-xs">
                     <Package className="w-8 h-8 mx-auto text-gray-400 mb-2" />

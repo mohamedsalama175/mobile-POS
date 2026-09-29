@@ -20,12 +20,21 @@ const AppContent: React.FC = () => {
 
   return (
     <DeviceFrame>
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-        {/* Top App Bar with Connectivity, Search, & Settings (§3.2) */}
+      {/* 
+        Layout: full height flex column.
+        TopAppBar = shrink-0 (fixed height)
+        main = flex-1 min-h-0 (scrollable screen area)
+        BottomNavBar = shrink-0 (fixed height, always visible)
+        
+        CRITICAL: do NOT wrap this div in overflow-hidden — the bar must not be clipped.
+        Each screen's inner content handles its own overflow-y-auto.
+      */}
+      <div className="flex-1 flex flex-col min-h-0 w-full relative">
+        {/* Top App Bar */}
         <TopAppBar />
 
-        {/* Active Screen Module Container */}
-        <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+        {/* Active Screen - flex-1 so it takes remaining space; each screen scrolls internally */}
+        <main className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
           {activeTab === 0 && <OrdersScreen />}
           {activeTab === 1 && <InvoicesScreen />}
           {activeTab === 2 && <PosScreen />}
@@ -35,7 +44,7 @@ const AppContent: React.FC = () => {
           {activeTab === 6 && <CustomerDirectoryScreen />}
         </main>
 
-        {/* 5-Tab Persistent Bottom Navigation Bar (§1 & §3.3) */}
+        {/* 5-Tab Persistent Bottom Navigation Bar — shrink-0 so it's always visible */}
         <BottomNavBar />
 
         {/* Global Toast Notification */}

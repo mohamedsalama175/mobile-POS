@@ -38,14 +38,19 @@ import {
 } from 'lucide-react';
 
 export const OrdersScreen: React.FC = () => {
-  const { language, theme, currentUser, showToast, refreshPendingCount, openReceipt, setActiveTab, openScanner } = useApp();
+  const { language, theme, currentUser, showToast, refreshPendingCount, openReceipt, setActiveTab, openScanner, setHideBottomNav } = useApp();
   const [view, setView] = useState<'list' | 'create'>('list');
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const isDark = theme === 'dark';
   const isRtl = language === 'ar';
 
-  // Wizard state (1: Customer, 2: Order Info, 3: Items, 4: Review)
-  const [wizardStep, setWizardStep] = useState<1 | 2 | 3 | 4>(1);
+  useEffect(() => {
+    setHideBottomNav(view === 'create');
+    return () => setHideBottomNav(false);
+  }, [view, setHideBottomNav]);
+
+  // Wizard state (1: Customer, 2: Items, 3: Review)
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
   const [directInvoice, setDirectInvoice] = useState(false);
 
   // Filters state
@@ -64,9 +69,9 @@ export const OrdersScreen: React.FC = () => {
     const custs = storageService.getCustomers();
     return custs.find(c => c.id === 'cust-1') || custs[0] || null;
   });
-  const [requesterName, setRequesterName] = useState('خالد عبد الله');
-  const [requesterPhone, setRequesterPhone] = useState('0509988776');
-  const [requesterAccordionOpen, setRequesterAccordionOpen] = useState(false);
+  // Requester fields removed per user request - defaults kept for save compatibility
+  const requesterName = '';
+  const requesterPhone = '';
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [subCompany, setSubCompany] = useState(INITIAL_LOOKUP_DATA.subCompanies[0]);
   const [itemType, setItemType] = useState(INITIAL_LOOKUP_DATA.itemTypes[0]);
@@ -80,8 +85,6 @@ export const OrdersScreen: React.FC = () => {
     const custs = storageService.getCustomers();
     const testCustomer = custs.find(c => c.id === 'cust-1') || custs[0] || null;
     setSelectedCustomer(testCustomer);
-    setRequesterName('خالد عبد الله');
-    setRequesterPhone('0509988776');
     setItems(GET_SAMPLE_20_LINE_ITEMS());
     soundService.playScanSuccess();
     showToast(
@@ -123,19 +126,12 @@ export const OrdersScreen: React.FC = () => {
       }
       setWizardStep(2);
     } else if (wizardStep === 2) {
-      if (!orderDate) {
-        soundService.playError();
-        showToast(isRtl ? 'تاريخ الطلب مطلوب' : 'Order date is required', 'error');
-        return;
-      }
-      setWizardStep(3);
-    } else if (wizardStep === 3) {
       if (items.length === 0) {
         soundService.playError();
         showToast(isRtl ? 'يرجى إضافة صنف واحد على الأقل' : 'Please add at least one line item', 'error');
         return;
       }
-      setWizardStep(4);
+      setWizardStep(3);
     }
   };
 
@@ -156,7 +152,7 @@ export const OrdersScreen: React.FC = () => {
       return;
     }
     if (items.length === 0) {
-      setWizardStep(3);
+      setWizardStep(2);
       showToast(isRtl ? 'يرجى إضافة أصناف للطلب' : 'Please add items', 'error');
       return;
     }
@@ -255,8 +251,6 @@ export const OrdersScreen: React.FC = () => {
 
   const resetForm = () => {
     setSelectedCustomer(null);
-    setRequesterName('');
-    setRequesterPhone('');
     setOrderDate(new Date().toISOString().split('T')[0]);
     setItems([]);
     setWizardStep(1);
@@ -354,22 +348,18 @@ export const OrdersScreen: React.FC = () => {
         {/* Wizard Header with Progress Dots */}
         <WizardHeader
           currentStep={wizardStep}
-          totalSteps={4}
+          totalSteps={3}
           title={
             wizardStep === 1
               ? (isRtl ? 'اختيار العميل' : 'Customer Selection')
               : wizardStep === 2
-              ? (isRtl ? 'تفاصيل الطلب والمخزن' : 'Order & Warehouse')
-              : wizardStep === 3
               ? (isRtl ? `الأصناف المطلوبة (${items.length})` : `Line Items (${items.length})`)
               : (isRtl ? 'المراجعة والتأكيد' : 'Review & Confirm')
           }
           subtitle={
             wizardStep === 1
-              ? (isRtl ? 'حدد العميل ومقدم الطلب' : 'Select customer & requester info')
+              ? (isRtl ? 'حدد العميل للمتابعة' : 'Select customer to continue')
               : wizardStep === 2
-              ? (isRtl ? 'حدد تاريخ الطلب، المخزن، ونوع الصنف' : 'Set order date & source warehouse')
-              : wizardStep === 3
               ? (isRtl ? 'امسح الباركود وأضف الأصناف وعدّل الكميات' : 'Scan barcode or search & manage quantities')
               : (isRtl ? 'راجع الملخص المالي وخيار إصدار الفاتورة' : 'Review financial totals & direct invoice')
           }
@@ -377,7 +367,8 @@ export const OrdersScreen: React.FC = () => {
         />
 
         {/* Wizard Step Body */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-24">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-24">
+          <div className="max-w-4xl mx-auto w-full space-y-4">
           {/* STEP 1: CUSTOMER & REQUESTER */}
           {wizardStep === 1 && (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
@@ -405,170 +396,14 @@ export const OrdersScreen: React.FC = () => {
                 />
               </div>
 
-              {/* Collapsible Accordion: Requester Info */}
-              <div
-                className={`rounded-2xl border overflow-hidden ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white shadow-sm'
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setRequesterAccordionOpen(!requesterAccordionOpen)}
-                  className={`w-full p-3.5 flex items-center justify-between min-h-[48px] text-xs font-bold transition-colors ${
-                    isDark ? 'text-gray-200 hover:bg-[#252932]' : 'text-gray-800 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-blue-400" />
-                    <span>{isRtl ? 'بيانات مقدم الطلب (اختياري)' : 'Requester Details (Optional)'}</span>
-                  </div>
-                  {requesterAccordionOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
 
-                {requesterAccordionOpen && (
-                  <div className="p-3.5 pt-0 border-t border-inherit grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <label className={`text-[11px] block mb-1 font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {isRtl ? 'اسم مقدم الطلب' : 'Requester Name'}
-                      </label>
-                      <input
-                        type="text"
-                        value={requesterName}
-                        onChange={(e) => setRequesterName(e.target.value)}
-                        placeholder={isRtl ? 'الاسم الثلاثي...' : 'Full name...'}
-                        className={`w-full h-11 px-3 rounded-xl border outline-none text-xs transition-colors ${
-                          isDark
-                            ? 'border-[#333842] bg-[#121417] text-white focus:border-blue-500'
-                            : 'border-gray-200 bg-gray-50 text-gray-900 focus:bg-white focus:border-blue-500'
-                        }`}
-                      />
-                    </div>
-                    <div>
-                      <label className={`text-[11px] block mb-1 font-medium ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {isRtl ? 'رقم هاتف مقدم الطلب' : 'Requester Phone'}
-                      </label>
-                      <input
-                        type="tel"
-                        value={requesterPhone}
-                        onChange={(e) => setRequesterPhone(e.target.value)}
-                        placeholder="01XXXXXXXXX"
-                        className={`w-full h-11 px-3 font-mono rounded-xl border outline-none text-xs transition-colors ${
-                          isDark
-                            ? 'border-[#333842] bg-[#121417] text-white focus:border-blue-500'
-                            : 'border-gray-200 bg-gray-50 text-gray-900 focus:bg-white focus:border-blue-500'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
 
-          {/* STEP 2: ORDER INFO & WAREHOUSE */}
+
+
+          {/* STEP 2: LINE ITEMS */}
           {wizardStep === 2 && (
-            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
-              <div
-                className={`p-3.5 rounded-2xl border space-y-3.5 ${
-                  isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
-                }`}
-              >
-                <div>
-                  <label className={`text-xs block mb-1 font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {isRtl ? 'تاريخ الطلب *' : 'Order Date *'}
-                  </label>
-                  <input
-                    type="date"
-                    value={orderDate}
-                    onChange={(e) => setOrderDate(e.target.value)}
-                    className={`w-full h-12 px-3 rounded-xl border outline-none font-mono text-xs transition-colors ${
-                      isDark
-                        ? 'border-[#333842] bg-[#121417] text-white focus:border-blue-500'
-                        : 'border-gray-200 bg-gray-50 text-gray-900 focus:bg-white focus:border-blue-500'
-                    }`}
-                  />
-                </div>
-
-                <div>
-                  <label className={`text-xs block mb-1.5 font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {isRtl ? 'المخزن المصدر *' : 'Source Warehouse *'}
-                  </label>
-                  <select
-                    value={warehouse}
-                    onChange={(e) => setWarehouse(e.target.value)}
-                    className={`w-full h-12 px-3 rounded-xl border text-xs outline-none transition-colors ${
-                      isDark
-                        ? 'border-[#333842] bg-[#121417] text-white focus:border-blue-500'
-                        : 'border-gray-200 bg-gray-50 text-gray-900 focus:bg-white focus:border-blue-500'
-                    }`}
-                  >
-                    {INITIAL_LOOKUP_DATA.warehouses.map((wh, idx) => (
-                      <option key={idx} value={wh}>{wh}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={`text-xs block mb-1.5 font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    {isRtl ? 'نوع الصنف *' : 'Item Type *'}
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {INITIAL_LOOKUP_DATA.itemTypes.map((it, idx) => {
-                      const isSelected = itemType === it;
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setItemType(it)}
-                          className={`h-11 px-3 rounded-xl border text-xs font-bold flex items-center justify-center transition-all ${
-                            isSelected
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                              : isDark
-                              ? 'border-[#333842] bg-[#121417] text-gray-300 hover:bg-[#252932]'
-                              : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
-                          }`}
-                        >
-                          {it}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-inherit">
-                  <div>
-                    <label className={`text-[11px] block mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {isRtl ? 'الشركة الفرعية' : 'Sub-Company'}
-                    </label>
-                    <input
-                      type="text"
-                      value={subCompany}
-                      readOnly
-                      className={`w-full h-10 px-2.5 rounded-lg border text-xs outline-none truncate ${
-                        isDark ? 'border-[#333842] bg-[#121417] text-gray-400' : 'border-gray-200 bg-gray-100 text-gray-600'
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <label className={`text-[11px] block mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                      {isRtl ? 'المندوب المسؤول' : 'Sales Rep'}
-                    </label>
-                    <input
-                      type="text"
-                      value={salesRep}
-                      readOnly
-                      className={`w-full h-10 px-2.5 rounded-lg border text-xs outline-none truncate ${
-                        isDark ? 'border-[#333842] bg-[#121417] text-gray-400' : 'border-gray-200 bg-gray-100 text-gray-600'
-                      }`}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: LINE ITEMS */}
-          {wizardStep === 3 && (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
               {/* Quick Actions Bar */}
               <div
@@ -624,8 +459,8 @@ export const OrdersScreen: React.FC = () => {
             </div>
           )}
 
-          {/* STEP 4: REVIEW & CONFIRM */}
-          {wizardStep === 4 && (
+          {/* STEP 3: REVIEW & CONFIRM */}
+          {wizardStep === 3 && (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
               {/* Customer & Warehouse Summary Card */}
               <div
@@ -752,23 +587,22 @@ export const OrdersScreen: React.FC = () => {
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* Wizard Sticky Bottom Action Bar */}
         <StickyBottomBar
           primaryText={
             wizardStep === 1
-              ? (isRtl ? 'التالي: تفاصيل الطلب' : 'Next: Order Info')
-              : wizardStep === 2
               ? (isRtl ? 'التالي: الأصناف' : 'Next: Items')
-              : wizardStep === 3
+              : wizardStep === 2
               ? (isRtl ? 'التالي: المراجعة' : 'Next: Review')
               : directInvoice
               ? (isRtl ? 'تأكيد وإصدار الفاتورة' : 'Confirm & Invoice')
               : (isRtl ? 'تأكيد وحفظ الطلب' : 'Confirm & Save Order')
           }
-          primaryIcon={wizardStep === 4 ? <Check className="w-5 h-5" /> : isRtl ? <ArrowLeft className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
-          onPrimary={wizardStep === 4 ? handleSave : handleNextStep}
+          primaryIcon={wizardStep === 3 ? <Check className="w-5 h-5" /> : isRtl ? <ArrowLeft className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+          onPrimary={wizardStep === 3 ? handleSave : handleNextStep}
           secondaryText={wizardStep === 1 ? (isRtl ? 'إلغاء' : 'Cancel') : (isRtl ? 'السابق' : 'Back')}
           secondaryIcon={wizardStep === 1 ? <X className="w-4 h-4" /> : isRtl ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
           onSecondary={handlePrevStep}
@@ -791,193 +625,196 @@ export const OrdersScreen: React.FC = () => {
     >
       {/* Top Action & Filter Header */}
       <div
-        className={`p-3 border-b flex items-center justify-between gap-2 shrink-0 ${
+        className={`p-3 sm:px-6 border-b shrink-0 ${
           isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white'
         }`}
       >
-        <button
-          id="create-new-order-btn"
-          onClick={() => {
-            soundService.playClick();
-            if (items.length === 0) load35TestItems();
-            setWizardStep(1);
-            setView('create');
-          }}
-          className={`flex-1 h-12 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98 min-h-[48px] ${
-            isDark
-              ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700'
-              : 'bg-[#252B37] hover:bg-[#1E232D] active:bg-black'
-          }`}
-        >
-          <Plus className="w-4 h-4" />
-          <span>{isRtl ? 'إنشاء طلب بيع جديد (معالج خطوات)' : 'New Order (Wizard)'}</span>
-        </button>
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
+          <button
+            id="create-new-order-btn"
+            onClick={() => {
+              soundService.playClick();
+              if (items.length === 0) load35TestItems();
+              setWizardStep(1);
+              setView('create');
+            }}
+            className={`flex-1 h-12 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98 min-h-[48px] ${
+              isDark
+                ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700'
+                : 'bg-[#252B37] hover:bg-[#1E232D] active:bg-black'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isRtl ? 'إنشاء طلب بيع جديد (معالج خطوات)' : 'New Order (Wizard)'}</span>
+          </button>
 
-        {/* Filter Toggle Button */}
-        <button
-          id="orders-filter-toggle"
-          onClick={() => setShowFilters(!showFilters)}
-          className={`h-12 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-colors min-h-[48px] min-w-[48px] ${
-            isDark
-              ? showFilters || activeFilterCount > 0
-                ? 'bg-blue-500/20 border-blue-500 text-blue-400'
-                : 'bg-[#262A31] border-[#333842] text-gray-300 hover:text-white'
-              : showFilters || activeFilterCount > 0
-              ? 'bg-blue-50 border-blue-400 text-blue-700'
-              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-          title={isRtl ? 'تصفية وبحث' : 'Filters'}
-        >
-          <Filter className="w-4 h-4" />
-          {activeFilterCount > 0 && (
-            <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
+          {/* Filter Toggle Button */}
+          <button
+            id="orders-filter-toggle"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`h-12 px-3.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-colors min-h-[48px] min-w-[48px] ${
+              isDark
+                ? showFilters || activeFilterCount > 0
+                  ? 'bg-blue-500/20 border-blue-500 text-blue-400'
+                  : 'bg-[#262A31] border-[#333842] text-gray-300 hover:text-white'
+                : showFilters || activeFilterCount > 0
+                ? 'bg-blue-50 border-blue-400 text-blue-700'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={isRtl ? 'تصفية وبحث' : 'Filters'}
+          >
+            <Filter className="w-4 h-4" />
+            {activeFilterCount > 0 && (
+              <span className="w-4 h-4 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filter Panel (Collapsible) */}
       {showFilters && (
         <div
           id="orders-filter-panel"
-          className={`p-3 border-b space-y-2 text-xs transition-all ${
+          className={`p-3 sm:px-6 border-b transition-all ${
             isDark ? 'bg-[#16181D] border-[#333842]' : 'bg-gray-50 border-gray-200'
           }`}
         >
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'رقم الطلب' : 'Order #'}
-              </label>
-              <input
-                type="text"
-                value={filterOrderNo}
-                onChange={(e) => setFilterOrderNo(e.target.value)}
-                placeholder="SO-..."
-                className={`w-full h-9 px-2 rounded-lg border outline-none font-mono text-xs ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-                }`}
-              />
-            </div>
-            <div>
-              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'اسم العميل / الضريبي' : 'Customer / Tax'}
-              </label>
-              <input
-                type="text"
-                value={filterCustomer}
-                onChange={(e) => setFilterCustomer(e.target.value)}
-                placeholder={isRtl ? 'ابحث...' : 'Search...'}
-                className={`w-full h-9 px-2 rounded-lg border outline-none text-xs ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-                }`}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'من تاريخ' : 'Date From'}
-              </label>
-              <input
-                type="date"
-                value={filterDateFrom}
-                onChange={(e) => setFilterDateFrom(e.target.value)}
-                className={`w-full h-9 px-2 rounded-lg border outline-none font-mono text-xs ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-                }`}
-              />
-            </div>
-            <div>
-              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'إلى تاريخ' : 'Date To'}
-              </label>
-              <input
-                type="date"
-                value={filterDateTo}
-                onChange={(e) => setFilterDateTo(e.target.value)}
-                className={`w-full h-9 px-2 rounded-lg border outline-none font-mono text-xs ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-                }`}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-1">
-              <span className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'الحالة:' : 'Status:'}
-              </span>
-              {['all', 'confirmed', 'delivered', 'cancelled'].map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setFilterStatus(st)}
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold transition-colors ${
-                    filterStatus === st
-                      ? 'bg-blue-600 text-white'
-                      : isDark
-                      ? 'bg-[#262A31] text-gray-400'
-                      : 'bg-gray-200 text-gray-700'
+          <div className="max-w-7xl mx-auto w-full space-y-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <div>
+                <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'رقم الطلب' : 'Order #'}
+                </label>
+                <input
+                  type="text"
+                  value={filterOrderNo}
+                  onChange={(e) => setFilterOrderNo(e.target.value)}
+                  placeholder="SO-..."
+                  className={`w-full h-9 px-2 rounded-lg border outline-none font-mono text-xs ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
                   }`}
-                >
-                  {st === 'all'
-                    ? (isRtl ? 'الكل' : 'All')
-                    : st === 'confirmed'
-                    ? (isRtl ? 'مؤكد' : 'Confirmed')
-                    : st === 'delivered'
-                    ? (isRtl ? 'مسلم' : 'Delivered')
-                    : (isRtl ? 'ملغي' : 'Cancelled')}
-                </button>
-              ))}
+                />
+              </div>
+              <div>
+                <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'اسم العميل / الضريبي' : 'Customer / Tax'}
+                </label>
+                <input
+                  type="text"
+                  value={filterCustomer}
+                  onChange={(e) => setFilterCustomer(e.target.value)}
+                  placeholder={isRtl ? 'ابحث...' : 'Search...'}
+                  className={`w-full h-9 px-2 rounded-lg border outline-none text-xs ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
+                  }`}
+                />
+              </div>
+              <div>
+                <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'من تاريخ' : 'Date From'}
+                </label>
+                <input
+                  type="date"
+                  value={filterDateFrom}
+                  onChange={(e) => setFilterDateFrom(e.target.value)}
+                  className={`w-full h-9 px-2 rounded-lg border outline-none font-mono text-xs ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
+                  }`}
+                />
+              </div>
+              <div>
+                <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'إلى تاريخ' : 'Date To'}
+                </label>
+                <input
+                  type="date"
+                  value={filterDateTo}
+                  onChange={(e) => setFilterDateTo(e.target.value)}
+                  className={`w-full h-9 px-2 rounded-lg border outline-none font-mono text-xs ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
+                  }`}
+                />
+              </div>
             </div>
 
-            {activeFilterCount > 0 && (
-              <button
-                onClick={() => {
-                  setFilterOrderNo('');
-                  setFilterCustomer('');
-                  setFilterDateFrom('');
-                  setFilterDateTo('');
-                  setFilterStatus('all');
-                }}
-                className="text-[11px] text-blue-400 hover:underline"
-              >
-                {isRtl ? 'إعادة تعيين' : 'Reset'}
-              </button>
-            )}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'الحالة:' : 'Status:'}
+                </span>
+                {['all', 'confirmed', 'delivered', 'cancelled'].map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setFilterStatus(st)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors ${
+                      filterStatus === st
+                        ? 'bg-blue-600 text-white'
+                        : isDark
+                        ? 'bg-[#262A31] text-gray-400 hover:text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {st === 'all'
+                      ? (isRtl ? 'الكل' : 'All')
+                      : st === 'confirmed'
+                      ? (isRtl ? 'مؤكد' : 'Confirmed')
+                      : st === 'delivered'
+                      ? (isRtl ? 'مسلم' : 'Delivered')
+                      : (isRtl ? 'ملغي' : 'Cancelled')}
+                  </button>
+                ))}
+              </div>
+
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => {
+                    setFilterOrderNo('');
+                    setFilterCustomer('');
+                    setFilterDateFrom('');
+                    setFilterDateTo('');
+                    setFilterStatus('all');
+                  }}
+                  className="text-[11px] text-blue-400 hover:underline font-semibold"
+                >
+                  {isRtl ? 'إعادة تعيين' : 'Reset'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {/* Orders List Body */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 pb-24">
-        {filteredOrders.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
-            <FileText className="w-12 h-12 opacity-30 stroke-[1.5]" />
-            <div className="font-bold text-sm">
-              {isRtl ? 'لا توجد طلبات بيع مطابقة' : 'No matching sales orders'}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-24">
+        <div className="max-w-7xl mx-auto w-full">
+          {filteredOrders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
+              <FileText className="w-12 h-12 opacity-30 stroke-[1.5]" />
+              <div className="font-bold text-sm">
+                {isRtl ? 'لا توجد طلبات بيع مطابقة' : 'No matching sales orders'}
+              </div>
+              <p className="text-xs text-gray-500 max-w-xs">
+                {isRtl ? 'ابدأ بإنشاء طلب جديد عبر المعالج المبسط' : 'Start by creating a new order using the step wizard'}
+              </p>
             </div>
-            <p className="text-xs text-gray-500 max-w-xs">
-              {isRtl ? 'ابدأ بإنشاء طلب جديد عبر المعالج المبسط' : 'Start by creating a new order using the step wizard'}
-            </p>
-          </div>
-        ) : (
-          filteredOrders.map((order) => {
-            const isDraft = order.orderNumber.startsWith('DRAFT');
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {filteredOrders.map((order) => {
+                const isDraft = order.orderNumber.startsWith('DRAFT');
 
-            return (
-              <div
-                key={order.id}
-                onClick={() => {
-                  soundService.playClick();
-                  setSelectedOrder(order);
-                }}
-                className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none active:scale-[0.99] ${
-                  isDark
-                    ? 'bg-[#1C1F24] border-[#333842] hover:border-blue-500/50 hover:bg-[#22262D]'
-                    : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => {
+                      soundService.playClick();
+                      setSelectedOrder(order);
+                    }}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none active:scale-[0.99] flex flex-col justify-between ${
+                      isDark
+                        ? 'bg-[#1C1F24] border-[#333842] hover:border-blue-500/50 hover:bg-[#22262D]'
+                        : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-md'
                 }`}
               >
                 {/* Header: Number & Status */}
@@ -1031,8 +868,10 @@ export const OrdersScreen: React.FC = () => {
                 </div>
               </div>
             );
-          })
+          })}
+          </div>
         )}
+        </div>
       </div>
 
       {/* Floating Action Button (FAB) for Instant Order Creation */}

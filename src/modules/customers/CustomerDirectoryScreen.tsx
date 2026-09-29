@@ -73,7 +73,8 @@ export const CustomerDirectoryScreen: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-screen-xl mx-auto p-3 sm:p-5 space-y-4 select-none">
+    <div className="flex-1 w-full h-full overflow-y-auto p-3 sm:p-4 md:p-6 select-none touch-scroll pb-24">
+      <div className="max-w-7xl mx-auto space-y-4">
       {/* 1. Header Bar: Title, Count, Add Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-200/80 dark:border-[#2D333F]">
         <div className="flex items-center gap-3">
@@ -150,7 +151,7 @@ export const CustomerDirectoryScreen: React.FC = () => {
             onAction={handleOpenAdd}
           />
         ) : (
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
             {customers.map((cust) => {
               const isOverLimit = cust.creditLimit > 0 && cust.currentBalance > cust.creditLimit;
               return (
@@ -228,6 +229,7 @@ export const CustomerDirectoryScreen: React.FC = () => {
         onSave={handleSaveCustomer}
         language={language}
       />
+      </div>
     </div>
   );
 };

@@ -36,12 +36,17 @@ import {
 } from 'lucide-react';
 
 export const InvoicesScreen: React.FC = () => {
-  const { language, theme, currentUser, showToast, refreshPendingCount, openReceipt } = useApp();
+  const { language, theme, currentUser, showToast, refreshPendingCount, openReceipt, setHideBottomNav } = useApp();
   const [view, setView] = useState<'list' | 'create'>('list');
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const isDark = theme === 'dark';
   const isRtl = language === 'ar';
+
+  useEffect(() => {
+    setHideBottomNav(view === 'create');
+    return () => setHideBottomNav(false);
+  }, [view, setHideBottomNav]);
 
   // Wizard state: 1: Order/Customer, 2: Line Items, 3: Payment & Cash
   const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
@@ -303,7 +308,8 @@ export const InvoicesScreen: React.FC = () => {
           onBack={handlePrevStep}
         />
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-24">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-24">
+          <div className="max-w-4xl mx-auto w-full space-y-4">
           {/* STEP 1: SELECT ORDER OR DIRECT CUSTOMER */}
           {wizardStep === 1 && (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
@@ -566,6 +572,7 @@ export const InvoicesScreen: React.FC = () => {
               )}
             </div>
           )}
+          </div>
         </div>
 
         {/* Wizard Sticky Bottom Action Bar */}
@@ -622,142 +629,147 @@ export const InvoicesScreen: React.FC = () => {
     >
       {/* Top Action & Filter Header */}
       <div
-        className={`p-3 border-b flex items-center justify-between gap-2 shrink-0 ${
+        className={`p-3 sm:px-6 border-b shrink-0 ${
           isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white'
         }`}
       >
-        <button
-          id="create-new-invoice-btn"
-          onClick={() => {
-            soundService.playClick();
-            setSelectedOrder(null);
-            setSelectedCustomer(null);
-            setItems([]);
-            setWizardStep(1);
-            setView('create');
-          }}
-          className={`flex-1 h-12 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98 min-h-[48px] ${
-            isDark
-              ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700'
-              : 'bg-[#252B37] hover:bg-[#1E232D] active:bg-black'
-          }`}
-        >
-          <Plus className="w-4 h-4" />
-          <span>{isRtl ? 'إصدار فاتورة بيع جديدة' : 'New Sales Invoice'}</span>
-        </button>
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
+          <button
+            id="create-new-invoice-btn"
+            onClick={() => {
+              soundService.playClick();
+              setSelectedOrder(null);
+              setSelectedCustomer(null);
+              setItems([]);
+              setWizardStep(1);
+              setView('create');
+            }}
+            className={`flex-1 h-12 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-98 min-h-[48px] ${
+              isDark
+                ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700'
+                : 'bg-[#252B37] hover:bg-[#1E232D] active:bg-black'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isRtl ? 'إصدار فاتورة بيع جديدة' : 'New Sales Invoice'}</span>
+          </button>
 
-        {/* Filter Toggle Button */}
-        <button
-          id="invoices-filter-toggle"
-          onClick={() => setShowFilters(!showFilters)}
-          className={`h-12 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-colors min-h-[48px] min-w-[48px] ${
-            showFilters
-              ? 'bg-blue-500/20 border-blue-500 text-blue-400'
-              : isDark
-              ? 'bg-[#262A31] border-[#333842] text-gray-300 hover:text-white'
-              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-          }`}
-          title={isRtl ? 'تصفية وبحث' : 'Filter'}
-        >
-          <Filter className="w-4 h-4" />
-        </button>
+          {/* Filter Toggle Button */}
+          <button
+            id="invoices-filter-toggle"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`h-12 px-3.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold transition-colors min-h-[48px] min-w-[48px] ${
+              showFilters
+                ? 'bg-blue-500/20 border-blue-500 text-blue-400'
+                : isDark
+                ? 'bg-[#262A31] border-[#333842] text-gray-300 hover:text-white'
+                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={isRtl ? 'تصفية وبحث' : 'Filter'}
+          >
+            <Filter className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Filter Drawer */}
       {showFilters && (
         <div
           id="invoices-filter-panel"
-          className={`p-3 border-b space-y-2 text-xs transition-all ${
+          className={`p-3 sm:px-6 border-b transition-all ${
             isDark ? 'bg-[#16181D] border-[#333842]' : 'bg-gray-50 border-gray-200'
           }`}
         >
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'رقم الفاتورة' : 'Invoice #'}
-              </label>
-              <input
-                type="text"
-                value={filterInvoiceNo}
-                onChange={(e) => setFilterInvoiceNo(e.target.value)}
-                placeholder="INV-..."
-                className={`w-full h-9 px-2 rounded-lg border font-mono text-xs outline-none ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-                }`}
-              />
+          <div className="max-w-7xl mx-auto w-full space-y-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+              <div>
+                <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'رقم الفاتورة' : 'Invoice #'}
+                </label>
+                <input
+                  type="text"
+                  value={filterInvoiceNo}
+                  onChange={(e) => setFilterInvoiceNo(e.target.value)}
+                  placeholder="INV-..."
+                  className={`w-full h-9 px-2 rounded-lg border font-mono text-xs outline-none ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
+                  }`}
+                />
+              </div>
+              <div>
+                <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'نوع الفاتورة' : 'Type'}
+                </label>
+                <select
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
+                  }`}
+                >
+                  <option value="all">{isRtl ? 'الكل' : 'All'}</option>
+                  <option value="credit">{isRtl ? 'آجل' : 'Credit'}</option>
+                  <option value="cash">{isRtl ? 'نقدي' : 'Cash'}</option>
+                </select>
+              </div>
+              <div>
+                <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'حالة السداد' : 'Settlement'}
+                </label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
+                  }`}
+                >
+                  <option value="all">{isRtl ? 'كل الحالات' : 'All'}</option>
+                  <option value="paid">{isRtl ? 'مسددة بالكامل' : 'Paid'}</option>
+                  <option value="partial">{isRtl ? 'سداد جزئي' : 'Partial'}</option>
+                  <option value="unpaid">{isRtl ? 'غير مسددة' : 'Unpaid'}</option>
+                </select>
+              </div>
+              <div>
+                <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {isRtl ? 'العميل / الرقم الضريبي' : 'Customer / Tax'}
+                </label>
+                <input
+                  type="text"
+                  value={filterCustomer}
+                  onChange={(e) => setFilterCustomer(e.target.value)}
+                  placeholder={isRtl ? 'ابحث...' : 'Search...'}
+                  className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
+                  }`}
+                />
+              </div>
             </div>
-            <div>
-              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'نوع الفاتورة' : 'Type'}
-              </label>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-                }`}
-              >
-                <option value="all">{isRtl ? 'الكل' : 'All'}</option>
-                <option value="credit">{isRtl ? 'آجل' : 'Credit'}</option>
-                <option value="cash">{isRtl ? 'نقدي' : 'Cash'}</option>
-              </select>
-            </div>
-            <div>
-              <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'حالة السداد' : 'Settlement'}
-              </label>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-                }`}
-              >
-                <option value="all">{isRtl ? 'كل الحالات' : 'All'}</option>
-                <option value="paid">{isRtl ? 'مسددة بالكامل' : 'Paid'}</option>
-                <option value="partial">{isRtl ? 'سداد جزئي' : 'Partial'}</option>
-                <option value="unpaid">{isRtl ? 'غير مسددة' : 'Unpaid'}</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className={`text-[10px] block mb-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              {isRtl ? 'العميل / الرقم الضريبي' : 'Customer / Tax'}
-            </label>
-            <input
-              type="text"
-              value={filterCustomer}
-              onChange={(e) => setFilterCustomer(e.target.value)}
-              placeholder={isRtl ? 'ابحث...' : 'Search...'}
-              className={`w-full h-9 px-2 rounded-lg border text-xs outline-none ${
-                isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-              }`}
-            />
           </div>
         </div>
       )}
 
       {/* Invoices List Cards */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 pb-24">
-        {filteredInvoices.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
-            <Receipt className="w-12 h-12 opacity-30 stroke-[1.5]" />
-            <div className="font-bold text-sm">
-              {isRtl ? 'لا توجد فواتير مبيعات مطابقة' : 'No matching sales invoices'}
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-24">
+        <div className="max-w-7xl mx-auto w-full">
+          {filteredInvoices.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
+              <Receipt className="w-12 h-12 opacity-30 stroke-[1.5]" />
+              <div className="font-bold text-sm">
+                {isRtl ? 'لا توجد فواتير مبيعات مطابقة' : 'No matching sales invoices'}
+              </div>
+              <p className="text-xs text-gray-500 max-w-xs">
+                {isRtl ? 'أنشئ فاتورة جديدة أو حوّل طلباً مؤكداً' : 'Create new invoice or convert confirmed order'}
+              </p>
             </div>
-            <p className="text-xs text-gray-500 max-w-xs">
-              {isRtl ? 'أنشئ فاتورة جديدة أو حوّل طلباً مؤكداً' : 'Create new invoice or convert confirmed order'}
-            </p>
-          </div>
-        ) : (
-          filteredInvoices.map((inv) => {
-            const isSettled = inv.settlementStatus === 'paid' || (inv.paidAmount && inv.paidAmount >= inv.netDue);
-            const isPartial = inv.settlementStatus === 'partial' || (!isSettled && (inv.paidAmount || 0) > 0);
-            const remaining = inv.remainingBalance !== undefined ? inv.remainingBalance : Math.max(0, inv.netDue - (inv.paidAmount || 0));
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {filteredInvoices.map((inv) => {
+                const isSettled = inv.settlementStatus === 'paid' || (inv.paidAmount && inv.paidAmount >= inv.netDue);
+                const isPartial = inv.settlementStatus === 'partial' || (!isSettled && (inv.paidAmount || 0) > 0);
+                const remaining = inv.remainingBalance !== undefined ? inv.remainingBalance : Math.max(0, inv.netDue - (inv.paidAmount || 0));
 
-            return (
-              <div
+                return (
+                  <div
                 key={inv.id}
                 onClick={() => {
                   soundService.playClick();
@@ -811,7 +823,7 @@ export const InvoicesScreen: React.FC = () => {
                 </div>
 
                 {/* US-04 Cash Collection & Remaining live sub-bar */}
-                {(inv.isCashPayment || (inv.paidAmount && inv.paidAmount > 0)) && (
+                {Boolean(inv.isCashPayment || (inv.paidAmount && inv.paidAmount > 0)) && (
                   <div className={`p-2 rounded-xl border flex items-center justify-between text-[11px] font-mono ${
                     isDark ? 'bg-[#121417] border-[#333842]' : 'bg-gray-50 border-gray-200'
                   }`}>
@@ -834,29 +846,11 @@ export const InvoicesScreen: React.FC = () => {
                 </div>
               </div>
             );
-          })
+          })}
+          </div>
         )}
+        </div>
       </div>
-
-      {/* Floating Action Button (FAB) for Instant Invoice Creation */}
-      <button
-        id="invoices-list-fab-create"
-        onClick={() => {
-          soundService.playClick();
-          setSelectedOrder(null);
-          setSelectedCustomer(null);
-          setItems([]);
-          setWizardStep(1);
-          setView('create');
-        }}
-        className={`fixed z-20 ${
-          isRtl ? 'left-5' : 'right-5'
-        } bottom-20 w-14 h-14 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-600/30 flex items-center justify-center active:scale-95 transition-transform min-w-[56px] min-h-[56px] focus:outline-none`}
-        title={isRtl ? 'إصدار فاتورة بيع جديدة' : 'New Sales Invoice'}
-        aria-label={isRtl ? 'إصدار فاتورة بيع جديدة' : 'New Sales Invoice'}
-      >
-        <Plus className="w-7 h-7" />
-      </button>
 
       {/* Invoice Quick Action Modal */}
       {selectedInvoice && (

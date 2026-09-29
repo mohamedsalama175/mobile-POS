@@ -24,11 +24,12 @@ import {
   ArrowLeft,
   ChevronDown,
   Layers,
-  Sparkles
+  Sparkles,
+  Printer
 } from 'lucide-react';
 
 export const ReturnsScreen: React.FC = () => {
-  const { language, theme, currentUser, showToast, refreshPendingCount } = useApp();
+  const { language, theme, currentUser, showToast, refreshPendingCount, setHideBottomNav, openReceipt } = useApp();
   const isDark = theme === 'dark';
   const isRtl = language === 'ar';
 
@@ -39,6 +40,11 @@ export const ReturnsScreen: React.FC = () => {
   const [createMode, setCreateMode] = useState<null | 'return' | 'credit_note'>(null);
   const [wizardStep, setWizardStep] = useState<1 | 2>(1);
   const [isChoiceSheetOpen, setIsChoiceSheetOpen] = useState(false);
+
+  useEffect(() => {
+    setHideBottomNav(createMode !== null);
+    return () => setHideBottomNav(false);
+  }, [createMode, setHideBottomNav]);
 
   // Data state
   const [returns, setReturns] = useState<SalesReturn[]>([]);
@@ -645,151 +651,159 @@ export const ReturnsScreen: React.FC = () => {
 
       {/* Search & Filter Header */}
       <div
-        className={`p-3 border-b flex items-center justify-between gap-2 shrink-0 ${
+        className={`p-3 sm:px-6 border-b shrink-0 ${
           isDark ? 'border-[#333842] bg-[#181B20]' : 'border-gray-200 bg-gray-50'
         }`}
       >
-        <div className="flex-1">
-          <input
-            type="text"
-            value={filterQuery}
-            onChange={(e) => setFilterQuery(e.target.value)}
-            placeholder={isRtl ? 'بحث برقم السند أو اسم العميل...' : 'Search doc # or customer...'}
-            className={`w-full h-11 px-3 rounded-xl border text-xs outline-none ${
-              isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-gray-200 bg-white text-gray-900'
-            }`}
-          />
-        </div>
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-3">
+          <div className="flex-1">
+            <input
+              type="text"
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              placeholder={isRtl ? 'بحث برقم السند أو اسم العميل...' : 'Search doc # or customer...'}
+              className={`w-full h-11 px-3 rounded-xl border text-xs outline-none ${
+                isDark ? 'border-[#333842] bg-[#121417] text-white' : 'border-gray-200 bg-white text-gray-900'
+              }`}
+            />
+          </div>
 
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`h-11 px-3 rounded-xl border flex items-center gap-1.5 text-xs font-semibold min-h-[44px] ${
-            showFilters
-              ? 'bg-blue-500/20 border-blue-500 text-blue-400'
-              : isDark
-              ? 'border-[#333842] bg-[#262A31] text-gray-300'
-              : 'border-gray-200 bg-white text-gray-700'
-          }`}
-        >
-          <Filter className="w-4 h-4" />
-        </button>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`h-11 px-3.5 rounded-xl border flex items-center gap-1.5 text-xs font-semibold min-h-[44px] ${
+              showFilters
+                ? 'bg-blue-500/20 border-blue-500 text-blue-400'
+                : isDark
+                ? 'border-[#333842] bg-[#262A31] text-gray-300'
+                : 'border-gray-200 bg-white text-gray-700'
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* List Body */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 pb-24">
-        {/* Returns section */}
-        {(activeSegment === 'all' || activeSegment === 'returns') && (
-          <>
-            {activeSegment === 'all' && (
-              <div className="text-[11px] font-bold text-gray-400 px-1 pt-1 flex items-center gap-1.5">
-                <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
-                <span>{isRtl ? 'مرتجعات طلبات البيع' : 'Sales Returns'}</span>
-              </div>
-            )}
-            {filteredReturns.map((ret) => (
-              <div
-                key={ret.id}
-                onClick={() => {
-                  soundService.playClick();
-                  setSelectedReturn(ret);
-                }}
-                className={`p-3.5 rounded-2xl border shadow-sm cursor-pointer select-none active:scale-[0.99] transition-all space-y-2 ${
-                  isDark
-                    ? 'border-[#333842] bg-[#1C1F24] hover:border-amber-500/40'
-                    : 'border-gray-200 bg-white hover:border-amber-300 shadow-sm'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
-                    <span className="font-mono font-bold text-xs text-amber-500">{ret.returnNumber}</span>
+      <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-24">
+        <div className="max-w-7xl mx-auto w-full">
+          {/* Returns section */}
+          {(activeSegment === 'all' || activeSegment === 'returns') && (
+            <div className="mb-4">
+              {activeSegment === 'all' && (
+                <div className="text-[11px] font-bold text-gray-400 px-1 pb-2 flex items-center gap-1.5">
+                  <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{isRtl ? 'مرتجعات طلبات البيع' : 'Sales Returns'}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {filteredReturns.map((ret) => (
+                  <div
+                    key={ret.id}
+                    onClick={() => {
+                      soundService.playClick();
+                      setSelectedReturn(ret);
+                    }}
+                    className={`p-3.5 rounded-2xl border shadow-sm cursor-pointer select-none active:scale-[0.99] transition-all space-y-2 flex flex-col justify-between ${
+                      isDark
+                        ? 'border-[#333842] bg-[#1C1F24] hover:border-amber-500/40'
+                        : 'border-gray-200 bg-white hover:border-amber-300 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
+                        <span className="font-mono font-bold text-xs text-amber-500">{ret.returnNumber}</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
+                        {isRtl ? 'مرتجع بيع' : 'Return'}
+                      </span>
+                    </div>
+
+                    <div className="text-xs">
+                      <div className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{ret.customerName}</div>
+                      <div className="text-[11px] text-gray-500 flex justify-between mt-0.5">
+                        <span>{ret.items.length} {isRtl ? 'أصناف' : 'items'} • طلب: {ret.linkedOrderNumber}</span>
+                        <span className="font-mono">{ret.date}</span>
+                      </div>
+                    </div>
+
+                    <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-gray-100'}`}>
+                      <span className="text-[11px] text-gray-500">{isRtl ? 'قيمة المرتجع:' : 'Return Total:'}</span>
+                      <span className="font-mono font-bold text-sm text-amber-500">
+                        {ret.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">
-                    {isRtl ? 'مرتجع بيع' : 'Return'}
-                  </span>
-                </div>
-
-                <div className="text-xs">
-                  <div className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{ret.customerName}</div>
-                  <div className="text-[11px] text-gray-500 flex justify-between mt-0.5">
-                    <span>{ret.items.length} {isRtl ? 'أصناف' : 'items'} • طلب: {ret.linkedOrderNumber}</span>
-                    <span className="font-mono">{ret.date}</span>
-                  </div>
-                </div>
-
-                <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-gray-100'}`}>
-                  <span className="text-[11px] text-gray-500">{isRtl ? 'قيمة المرتجع:' : 'Return Total:'}</span>
-                  <span className="font-mono font-bold text-sm text-amber-500">
-                    {ret.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
-                  </span>
-                </div>
+                ))}
               </div>
-            ))}
-          </>
-        )}
-
-        {/* Credit Notes section */}
-        {(activeSegment === 'all' || activeSegment === 'credit_notes') && (
-          <>
-            {activeSegment === 'all' && (
-              <div className="text-[11px] font-bold text-gray-400 px-1 pt-2 flex items-center gap-1.5">
-                <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
-                <span>{isRtl ? 'مذكرات الائتمان' : 'Credit Notes'}</span>
-              </div>
-            )}
-            {filteredCreditNotes.map((cn) => (
-              <div
-                key={cn.id}
-                onClick={() => {
-                  soundService.playClick();
-                  setSelectedCreditNote(cn);
-                }}
-                className={`p-3.5 rounded-2xl border shadow-sm cursor-pointer select-none active:scale-[0.99] transition-all space-y-2 ${
-                  isDark
-                    ? 'border-[#333842] bg-[#1C1F24] hover:border-indigo-500/40'
-                    : 'border-gray-200 bg-white hover:border-indigo-300 shadow-sm'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
-                    <span className="font-mono font-bold text-xs text-indigo-400">{cn.creditNoteNumber}</span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400">
-                    {isRtl ? 'مذكرة ائتمان' : 'Credit Note'}
-                  </span>
-                </div>
-
-                <div className="text-xs">
-                  <div className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{cn.customerName}</div>
-                  <div className="text-[11px] text-gray-500 flex justify-between mt-0.5">
-                    <span>فاتورة: {cn.linkedInvoiceNumber || '-'}</span>
-                    <span className="font-mono">{cn.date}</span>
-                  </div>
-                </div>
-
-                <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-gray-100'}`}>
-                  <span className="text-[11px] text-gray-500">{isRtl ? 'مبلغ الائتمان:' : 'Credited Amount:'}</span>
-                  <span className="font-mono font-bold text-sm text-indigo-400">
-                    {cn.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </>
-        )}
-
-        {filteredReturns.length === 0 && filteredCreditNotes.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
-            <RotateCcw className="w-12 h-12 opacity-30 stroke-[1.5]" />
-            <div className="font-bold text-sm">
-              {isRtl ? 'لا توجد مرتجعات أو مذكرات ائتمان مسجلة' : 'No returns or credit notes recorded'}
             </div>
-            <p className="text-xs text-gray-500 max-w-xs">
-              {isRtl ? 'اضغط زر الإضافة (+) أدناه لإنشاء مرتجع أو مذكرة ائتمان جديدة' : 'Tap (+) below to create a return or credit note'}
-            </p>
-          </div>
-        )}
+          )}
+
+          {/* Credit Notes section */}
+          {(activeSegment === 'all' || activeSegment === 'credit_notes') && (
+            <div className="mb-4">
+              {activeSegment === 'all' && (
+                <div className="text-[11px] font-bold text-gray-400 px-1 pb-2 flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{isRtl ? 'مذكرات الائتمان' : 'Credit Notes'}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {filteredCreditNotes.map((cn) => (
+                  <div
+                    key={cn.id}
+                    onClick={() => {
+                      soundService.playClick();
+                      setSelectedCreditNote(cn);
+                    }}
+                    className={`p-3.5 rounded-2xl border shadow-sm cursor-pointer select-none active:scale-[0.99] transition-all space-y-2 flex flex-col justify-between ${
+                      isDark
+                        ? 'border-[#333842] bg-[#1C1F24] hover:border-indigo-500/40'
+                        : 'border-gray-200 bg-white hover:border-indigo-300 shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <CreditCard className="w-3.5 h-3.5 text-indigo-400" />
+                        <span className="font-mono font-bold text-xs text-indigo-400">{cn.creditNoteNumber}</span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400">
+                        {isRtl ? 'مذكرة ائتمان' : 'Credit Note'}
+                      </span>
+                    </div>
+
+                    <div className="text-xs">
+                      <div className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{cn.customerName}</div>
+                      <div className="text-[11px] text-gray-500 flex justify-between mt-0.5">
+                        <span>فاتورة: {cn.linkedInvoiceNumber || '-'}</span>
+                        <span className="font-mono">{cn.date}</span>
+                      </div>
+                    </div>
+
+                    <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-gray-100'}`}>
+                      <span className="text-[11px] text-gray-500">{isRtl ? 'مبلغ الائتمان:' : 'Credited Amount:'}</span>
+                      <span className="font-mono font-bold text-sm text-indigo-400">
+                        {cn.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {filteredReturns.length === 0 && filteredCreditNotes.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
+              <RotateCcw className="w-12 h-12 opacity-30 stroke-[1.5]" />
+              <div className="font-bold text-sm">
+                {isRtl ? 'لا توجد مرتجعات أو مذكرات ائتمان مسجلة' : 'No returns or credit notes recorded'}
+              </div>
+              <p className="text-xs text-gray-500 max-w-xs">
+                {isRtl ? 'اضغط زر الإضافة (+) أدناه لإنشاء مرتجع أو مذكرة ائتمان جديدة' : 'Tap (+) below to create a return or credit note'}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Floating Action Button (FAB) for Choice Bottom Sheet */}
@@ -952,6 +966,32 @@ export const ReturnsScreen: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            {/* Footer Quick Print Action */}
+            <div className={`p-3 border-t grid grid-cols-2 gap-2 ${
+              isDark ? 'border-[#333842] bg-[#262A31]' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <button
+                type="button"
+                onClick={() => {
+                  openReceipt(selectedReturn, 'return');
+                  setSelectedReturn(null);
+                }}
+                className="h-11 min-h-[44px] bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+              >
+                <Printer className="w-4 h-4" />
+                <span>{isRtl ? 'طباعة الإشعار' : 'Print Voucher'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedReturn(null)}
+                className={`h-11 min-h-[44px] border rounded-xl text-xs font-semibold flex items-center justify-center transition-colors ${
+                  isDark ? 'border-[#333842] hover:bg-[#333842] text-gray-300' : 'border-gray-300 hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                {isRtl ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1002,9 +1042,36 @@ export const ReturnsScreen: React.FC = () => {
                 </span>
               </div>
             </div>
+
+            {/* Footer Quick Print Action */}
+            <div className={`p-3 border-t grid grid-cols-2 gap-2 ${
+              isDark ? 'border-[#333842] bg-[#262A31]' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <button
+                type="button"
+                onClick={() => {
+                  openReceipt(selectedCreditNote, 'credit_note');
+                  setSelectedCreditNote(null);
+                }}
+                className="h-11 min-h-[44px] bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+              >
+                <Printer className="w-4 h-4" />
+                <span>{isRtl ? 'طباعة الإشعار الدائن' : 'Print Credit Note'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedCreditNote(null)}
+                className={`h-11 min-h-[44px] border rounded-xl text-xs font-semibold flex items-center justify-center transition-colors ${
+                  isDark ? 'border-[#333842] hover:bg-[#333842] text-gray-300' : 'border-gray-300 hover:bg-gray-100 text-gray-700'
+                }`}
+              >
+                {isRtl ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
           </div>
         </div>
       )}
+
     </div>
   );
 };

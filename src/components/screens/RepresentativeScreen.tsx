@@ -273,123 +273,128 @@ export const RepresentativeScreen: React.FC = () => {
     >
       {/* Header & Rep Switcher */}
       <div
-        className={`p-3 border-b flex items-center justify-between shrink-0 select-none ${
+        className={`p-3 border-b shrink-0 select-none ${
           isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white'
         }`}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-500 border border-blue-500/30 flex items-center justify-center font-bold shrink-0">
-            <Users className="w-5 h-5" />
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-blue-600/20 text-blue-500 border border-blue-500/30 flex items-center justify-center font-bold shrink-0">
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-xs sm:text-sm font-bold leading-tight truncate">
+                {currentRep.displayName}
+              </h2>
+              <span className="text-[10px] text-gray-400 font-mono truncate block">
+                {currentRep.badgeNumber} • {currentRep.branch}
+              </span>
+            </div>
           </div>
-          <div className="min-w-0">
-            <h2 className="text-xs font-bold leading-tight truncate">
-              {currentRep.displayName}
-            </h2>
-            <span className="text-[10px] text-gray-400 font-mono truncate block">
-              {currentRep.badgeNumber} • {currentRep.branch}
-            </span>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                soundService.playClick();
+                setShowReportModal(true);
+              }}
+              className={`h-10 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors min-h-[44px] ${
+                isDark
+                  ? 'border-[#333842] bg-[#262A31] text-gray-300 hover:text-white'
+                  : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-blue-500" />
+              <span className="hidden sm:inline">{isRtl ? 'تقرير' : 'Report'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={loadData}
+              className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors min-h-[44px] min-w-[44px] ${
+                isDark
+                  ? 'border-[#333842] bg-[#262A31] text-gray-300 hover:text-white'
+                  : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+              title={isRtl ? 'تحديث البيانات' : 'Refresh'}
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
           </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              soundService.playClick();
-              setShowReportModal(true);
-            }}
-            className={`h-10 px-3 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors min-h-[44px] ${
-              isDark
-                ? 'border-[#333842] bg-[#262A31] text-gray-300 hover:text-white'
-                : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <FileText className="w-4 h-4 text-blue-500" />
-            <span className="hidden sm:inline">{isRtl ? 'تقرير' : 'Report'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={loadData}
-            className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors min-h-[44px] min-w-[44px] ${
-              isDark
-                ? 'border-[#333842] bg-[#262A31] text-gray-300 hover:text-white'
-                : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
-            }`}
-            title={isRtl ? 'تحديث البيانات' : 'Refresh'}
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
       {/* Tabs Switcher: Overview | Invoices | Ledger */}
       <div
-        className={`p-2 border-b flex items-center gap-1 shrink-0 select-none ${
+        className={`p-2 border-b shrink-0 select-none ${
           isDark ? 'border-[#333842] bg-[#181B20]' : 'border-gray-200 bg-gray-50'
         }`}
       >
-        <button
-          type="button"
-          onClick={() => {
-            soundService.playClick();
-            setActiveTab('overview');
-          }}
-          className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all min-h-[44px] ${
-            activeTab === 'overview'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : isDark
-              ? 'text-gray-400 hover:text-white'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          {isRtl ? 'نظرة عامة' : 'Overview'}
-        </button>
+        <div className="max-w-7xl mx-auto w-full flex items-center gap-1 sm:gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              soundService.playClick();
+              setActiveTab('overview');
+            }}
+            className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all min-h-[44px] ${
+              activeTab === 'overview'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : isDark
+                ? 'text-gray-400 hover:text-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {isRtl ? 'نظرة عامة' : 'Overview'}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            soundService.playClick();
-            setActiveTab('invoices');
-          }}
-          className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all min-h-[44px] ${
-            activeTab === 'invoices'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : isDark
-              ? 'text-gray-400 hover:text-white'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          {isRtl ? `الفواتير (${repInvoices.length})` : `Invoices (${repInvoices.length})`}
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              soundService.playClick();
+              setActiveTab('invoices');
+            }}
+            className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all min-h-[44px] ${
+              activeTab === 'invoices'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : isDark
+                ? 'text-gray-400 hover:text-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {isRtl ? `الفواتير (${repInvoices.length})` : `Invoices (${repInvoices.length})`}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            soundService.playClick();
-            setActiveTab('ledger');
-          }}
-          className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all min-h-[44px] ${
-            activeTab === 'ledger'
-              ? 'bg-blue-600 text-white shadow-sm'
-              : isDark
-              ? 'text-gray-400 hover:text-white'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          {isRtl ? `حركات العهدة (${repTransactions.length})` : `Ledger (${repTransactions.length})`}
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              soundService.playClick();
+              setActiveTab('ledger');
+            }}
+            className={`flex-1 h-9 rounded-xl text-xs font-bold transition-all min-h-[44px] ${
+              activeTab === 'ledger'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : isDark
+                ? 'text-gray-400 hover:text-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {isRtl ? `حركات العهدة (${repTransactions.length})` : `Ledger (${repTransactions.length})`}
+          </button>
+        </div>
       </div>
 
       {/* Main Body */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-24">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 pb-24">
+        <div className="max-w-7xl mx-auto w-full space-y-4">
         {/* ========================================================= */}
-        {/* HORIZONTAL SWIPEABLE KPI CAROUSEL (5-6 Cards in EGP)       */}
+        {/* HORIZONTAL SWIPEABLE KPI CAROUSEL ON MOBILE, GRID ON TABLET/DESKTOP */}
         {/* ========================================================= */}
-        <div className="flex items-center gap-2.5 overflow-x-auto pb-1 snap-x scrollbar-none select-none">
+        <div className="flex items-center gap-2.5 overflow-x-auto pb-1 snap-x scrollbar-none select-none sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:overflow-x-visible sm:pb-0">
           {/* 1. رصيد العهدة (Petty Cash) */}
           <div
-            className={`min-w-[170px] flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
+            className={`min-w-[170px] sm:min-w-0 flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
               isDark ? 'bg-cyan-950/20 border-cyan-500/30' : 'bg-cyan-50 border-cyan-200 shadow-sm'
             }`}
           >
@@ -411,7 +416,7 @@ export const RepresentativeScreen: React.FC = () => {
 
           {/* 2. إجمالي الفواتير (Total Invoices) */}
           <div
-            className={`min-w-[170px] flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
+            className={`min-w-[170px] sm:min-w-0 flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
               isDark ? 'bg-blue-950/20 border-blue-500/30' : 'bg-blue-50 border-blue-200 shadow-sm'
             }`}
           >
@@ -431,7 +436,7 @@ export const RepresentativeScreen: React.FC = () => {
 
           {/* 3. غير مسدد (Unpaid) */}
           <div
-            className={`min-w-[170px] flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
+            className={`min-w-[170px] sm:min-w-0 flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
               isDark ? 'bg-amber-950/20 border-amber-500/30' : 'bg-amber-50 border-amber-200 shadow-sm'
             }`}
           >
@@ -453,7 +458,7 @@ export const RepresentativeScreen: React.FC = () => {
 
           {/* 4. مسدد (Paid) */}
           <div
-            className={`min-w-[170px] flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
+            className={`min-w-[170px] sm:min-w-0 flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
               isDark ? 'bg-emerald-950/20 border-emerald-500/30' : 'bg-emerald-50 border-emerald-200 shadow-sm'
             }`}
           >
@@ -473,7 +478,7 @@ export const RepresentativeScreen: React.FC = () => {
 
           {/* 5. سقف التخصيص (Allocation Ceiling) */}
           <div
-            className={`min-w-[170px] flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
+            className={`min-w-[170px] sm:min-w-0 flex-1 p-3.5 rounded-2xl border snap-start shrink-0 transition-all ${
               isDark ? 'bg-indigo-950/20 border-indigo-500/30' : 'bg-indigo-50 border-indigo-200 shadow-sm'
             }`}
           >
@@ -494,7 +499,7 @@ export const RepresentativeScreen: React.FC = () => {
 
         {/* Quick FIFO Action Banner */}
         <div
-          className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 ${
+          className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
             isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
           }`}
         >
@@ -503,10 +508,10 @@ export const RepresentativeScreen: React.FC = () => {
               <Banknote className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="text-xs font-bold leading-tight truncate">
+              <div className="text-xs sm:text-sm font-bold leading-tight truncate">
                 {isRtl ? 'التسوية التلقائية بالعهدة (FIFO)' : 'FIFO Petty Cash Settlement'}
               </div>
-              <div className="text-[10px] text-gray-400 truncate mt-0.5">
+              <div className="text-[10px] sm:text-xs text-gray-400 truncate mt-0.5">
                 {isRtl
                   ? `متاح بعهدة المندوب: ${metrics.pettyCash.toLocaleString()} ج.م | مطلوب: ${metrics.unpaidAmount.toLocaleString()} ج.م`
                   : `In hand: ${metrics.pettyCash.toLocaleString()} EGP | Due: ${metrics.unpaidAmount.toLocaleString()} EGP`}
@@ -519,7 +524,7 @@ export const RepresentativeScreen: React.FC = () => {
             id="rep-quick-fifo-btn"
             onClick={handleOpenFifo}
             disabled={metrics.pettyCash <= 0 || metrics.unpaidAmount <= 0}
-            className="h-11 px-4 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 disabled:opacity-40 text-white rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all shadow-md active:scale-98 min-h-[44px]"
+            className="h-11 px-4 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 disabled:opacity-40 text-white rounded-xl text-xs sm:text-sm font-bold shrink-0 flex items-center justify-center gap-1.5 transition-all shadow-md active:scale-98 min-h-[44px]"
           >
             <Banknote className="w-4 h-4" />
             <span>{isRtl ? 'تسوية سريعة' : 'Settle Now'}</span>
@@ -528,14 +533,14 @@ export const RepresentativeScreen: React.FC = () => {
 
         {/* TAB 1: OVERVIEW TAB */}
         {activeTab === 'overview' && (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Custody Consumption Progress Bar */}
             <div
               className={`p-4 rounded-2xl border space-y-2.5 ${
                 isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
               }`}
             >
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
                 <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {isRtl ? 'مؤشر استخدام سقف العهدة المالية' : 'Custody Allocation Usage'}
                 </span>
@@ -551,7 +556,7 @@ export const RepresentativeScreen: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-gray-500 font-mono">
+              <div className="flex items-center justify-between text-[11px] sm:text-xs text-gray-500 font-mono">
                 <span>0 {isRtl ? 'ج.م' : 'EGP'}</span>
                 <span>{metrics.pettyCash.toLocaleString()} / {metrics.allocationCeiling.toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}</span>
               </div>
@@ -559,18 +564,18 @@ export const RepresentativeScreen: React.FC = () => {
 
             {/* Quick Summary of Recent 3 Transactions */}
             <div
-              className={`p-3.5 rounded-2xl border space-y-2.5 ${
+              className={`p-3.5 sm:p-4 rounded-2xl border space-y-2.5 ${
                 isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
                   {isRtl ? 'أحدث حركات العهدة النقدية' : 'Recent Custody Movements'}
                 </span>
                 <button
                   type="button"
                   onClick={() => setActiveTab('ledger')}
-                  className="text-[11px] font-bold text-blue-500 hover:underline min-h-[44px] flex items-center"
+                  className="text-[11px] sm:text-xs font-bold text-blue-500 hover:underline min-h-[44px] flex items-center"
                 >
                   {isRtl ? 'عرض الكل' : 'View All'}
                 </button>
@@ -581,26 +586,28 @@ export const RepresentativeScreen: React.FC = () => {
                   {isRtl ? 'لا توجد حركات عهدة مسجلة' : 'No transactions recorded'}
                 </div>
               ) : (
-                repTransactions.slice(0, 3).map((tx) => (
-                  <div
-                    key={tx.id}
-                    className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${
-                      isDark ? 'bg-[#121417] border-[#333842]' : 'bg-gray-50 border-gray-200'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="font-bold truncate">{tx.notes}</div>
-                      <div className="text-[10px] text-gray-400 font-mono mt-0.5">{tx.date}</div>
-                    </div>
+                <div className="space-y-2">
+                  {repTransactions.slice(0, 3).map((tx) => (
                     <div
-                      className={`font-mono font-bold text-xs shrink-0 ${
-                        tx.type === 'collection' ? 'text-emerald-500' : 'text-amber-500'
+                      key={tx.id}
+                      className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${
+                        isDark ? 'bg-[#121417] border-[#333842]' : 'bg-gray-50 border-gray-200'
                       }`}
                     >
-                      {tx.type === 'collection' ? '+' : '-'}{tx.amount.toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
+                      <div className="min-w-0">
+                        <div className="font-bold truncate">{tx.notes}</div>
+                        <div className="text-[10px] text-gray-400 font-mono mt-0.5">{tx.date}</div>
+                      </div>
+                      <div
+                        className={`font-mono font-bold text-xs shrink-0 ${
+                          tx.type === 'collection' ? 'text-emerald-500' : 'text-amber-500'
+                        }`}
+                      >
+                        {tx.type === 'collection' ? '+' : '-'}{tx.amount.toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -609,38 +616,41 @@ export const RepresentativeScreen: React.FC = () => {
         {/* TAB 2: INVOICES TAB */}
         {activeTab === 'invoices' && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={filterSearch}
-                onChange={(e) => setFilterSearch(e.target.value)}
-                placeholder={isRtl ? 'بحث بالفاتورة أو العميل...' : 'Search invoice or customer...'}
-                className={`flex-1 h-11 px-3 rounded-xl border text-xs outline-none ${
-                  isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
-                }`}
-              />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-gray-400" />
+                <input
+                  type="text"
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  placeholder={isRtl ? 'بحث بالفاتورة أو العميل...' : 'Search invoice or customer...'}
+                  className={`w-full h-11 ps-9 pe-3 rounded-xl border text-xs sm:text-sm outline-none ${
+                    isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
+                  }`}
+                />
+              </div>
 
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as any)}
-                className={`h-11 px-2.5 rounded-xl border text-xs outline-none ${
+                className={`h-11 px-3 rounded-xl border text-xs sm:text-sm outline-none shrink-0 ${
                   isDark ? 'border-[#333842] bg-[#1C1F24] text-white' : 'border-gray-200 bg-white text-gray-900'
                 }`}
               >
-                <option value="all">{isRtl ? 'الكل' : 'All'}</option>
+                <option value="all">{isRtl ? 'كل الحالات' : 'All Statuses'}</option>
                 <option value="unpaid">{isRtl ? 'غير مسدد' : 'Unpaid'}</option>
                 <option value="partial">{isRtl ? 'سداد جزئي' : 'Partial'}</option>
-                <option value="paid">{isRtl ? 'مسدد' : 'Paid'}</option>
+                <option value="paid">{isRtl ? 'مسدد بالكامل' : 'Paid'}</option>
               </select>
             </div>
 
-            <div className="space-y-2">
-              {filteredInvoices.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-xs">
-                  {isRtl ? 'لا توجد فواتير مطابقة' : 'No matching invoices'}
-                </div>
-              ) : (
-                filteredInvoices.map((inv) => {
+            {filteredInvoices.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-xs">
+                {isRtl ? 'لا توجد فواتير مطابقة' : 'No matching invoices'}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {filteredInvoices.map((inv) => {
                   const isSettled = inv.settlementStatus === 'paid' || (inv.paidAmount && inv.paidAmount >= inv.netDue);
                   const remaining = inv.remainingBalance !== undefined ? inv.remainingBalance : Math.max(0, inv.netDue - (inv.paidAmount || 0));
 
@@ -648,28 +658,30 @@ export const RepresentativeScreen: React.FC = () => {
                     <div
                       key={inv.id}
                       onClick={() => setSelectedInvoice(inv)}
-                      className={`p-3 rounded-2xl border cursor-pointer select-none active:scale-[0.99] transition-all space-y-1.5 ${
-                        isDark ? 'bg-[#1C1F24] border-[#333842] hover:border-blue-500/40' : 'bg-white border-gray-200 shadow-sm'
+                      className={`p-3.5 rounded-2xl border cursor-pointer select-none active:scale-[0.99] transition-all flex flex-col justify-between ${
+                        isDark ? 'bg-[#1C1F24] border-[#333842] hover:border-blue-500/40' : 'bg-white border-gray-200 shadow-sm hover:border-blue-300'
                       }`}
                     >
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-mono font-bold text-blue-500">{inv.invoiceNumber}</span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            isSettled
-                              ? 'bg-emerald-500/20 text-emerald-400'
-                              : remaining < inv.netDue
-                              ? 'bg-amber-500/20 text-amber-400'
-                              : 'bg-gray-500/20 text-gray-400'
-                          }`}
-                        >
-                          {isSettled ? (isRtl ? 'مسددة' : 'Paid') : remaining < inv.netDue ? (isRtl ? 'سداد جزئي' : 'Partial') : (isRtl ? 'غير مسددة' : 'Unpaid')}
-                        </span>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-mono font-bold text-blue-500">{inv.invoiceNumber}</span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              isSettled
+                                ? 'bg-emerald-500/20 text-emerald-400'
+                                : remaining < inv.netDue
+                                ? 'bg-amber-500/20 text-amber-400'
+                                : 'bg-gray-500/20 text-gray-400'
+                            }`}
+                          >
+                            {isSettled ? (isRtl ? 'مسددة' : 'Paid') : remaining < inv.netDue ? (isRtl ? 'سداد جزئي' : 'Partial') : (isRtl ? 'غير مسددة' : 'Unpaid')}
+                          </span>
+                        </div>
+
+                        <div className="text-xs sm:text-sm font-bold truncate">{inv.customerName}</div>
                       </div>
 
-                      <div className="text-xs font-bold truncate">{inv.customerName}</div>
-
-                      <div className="flex items-center justify-between text-[11px] font-mono pt-1 border-t border-inherit">
+                      <div className="flex items-center justify-between text-[11px] sm:text-xs font-mono pt-2 mt-2 border-t border-inherit">
                         <span className="text-gray-400">{isRtl ? 'إجمالي:' : 'Total:'} {inv.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}</span>
                         <span className={remaining > 0 ? 'text-amber-500 font-bold' : 'text-emerald-500 font-bold'}>
                           {isRtl ? 'المتبقي:' : 'Due:'} {remaining.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
@@ -677,62 +689,65 @@ export const RepresentativeScreen: React.FC = () => {
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
+                })}
+              </div>
+            )}
           </div>
         )}
 
         {/* TAB 3: LEDGER TAB */}
         {activeTab === 'ledger' && (
-          <div className="space-y-2.5">
+          <div>
             {repTransactions.length === 0 ? (
               <div className="text-center py-16 text-gray-400 text-xs">
                 {isRtl ? 'لا توجد حركات عهدة مسجلة' : 'No transactions recorded'}
               </div>
             ) : (
-              repTransactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs space-y-1 ${
-                    isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
-                  }`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          tx.type === 'collection'
-                            ? 'bg-emerald-500/20 text-emerald-400'
-                            : 'bg-amber-500/20 text-amber-400'
-                        }`}
-                      >
-                        {tx.type === 'collection' ? (isRtl ? 'تحصيل نقدي' : 'Collection') : (isRtl ? 'تسوية عهدة' : 'Settlement')}
-                      </span>
-                      <span className="font-mono text-[10px] text-gray-400">{tx.date}</span>
-                    </div>
-                    <div className={`font-bold mt-1 text-xs truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {tx.notes}
-                    </div>
-                    {tx.invoiceNumber && (
-                      <div className="text-[10px] text-gray-400 font-mono mt-0.5">
-                        {isRtl ? 'فاتورة:' : 'Invoice:'} {tx.invoiceNumber} • {tx.customerName || ''}
-                      </div>
-                    )}
-                  </div>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {repTransactions.map((tx) => (
                   <div
-                    className={`font-mono font-bold text-sm shrink-0 ps-2 ${
-                      tx.type === 'collection' ? 'text-emerald-500' : 'text-amber-500'
+                    key={tx.id}
+                    className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs space-y-1 ${
+                      isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200 shadow-sm'
                     }`}
                   >
-                    {tx.type === 'collection' ? '+' : '-'}{tx.amount.toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            tx.type === 'collection'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'bg-amber-500/20 text-amber-400'
+                          }`}
+                        >
+                          {tx.type === 'collection' ? (isRtl ? 'تحصيل نقدي' : 'Collection') : (isRtl ? 'تسوية عهدة' : 'Settlement')}
+                        </span>
+                        <span className="font-mono text-[10px] text-gray-400">{tx.date}</span>
+                      </div>
+                      <div className={`font-bold mt-1 text-xs sm:text-sm truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {tx.notes}
+                      </div>
+                      {tx.invoiceNumber && (
+                        <div className="text-[10px] text-gray-400 font-mono mt-0.5 truncate">
+                          {isRtl ? 'فاتورة:' : 'Invoice:'} {tx.invoiceNumber} • {tx.customerName || ''}
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      className={`font-mono font-bold text-sm shrink-0 ps-2 ${
+                        tx.type === 'collection' ? 'text-emerald-500' : 'text-amber-500'
+                      }`}
+                    >
+                      {tx.type === 'collection' ? '+' : '-'}{tx.amount.toLocaleString()} {isRtl ? 'ج.م' : 'EGP'}
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* ========================================================= */}

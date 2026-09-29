@@ -269,3 +269,17 @@ export interface PettyCashTransaction {
   notes?: string;
   createdAt: string;
 }
+
+export interface PrinterSettings {
+  paperWidth: '80mm' | '58mm';
+  printerType: 'system' | 'bluetooth';
+  autoPrintOnCheckout: boolean;
+  storeName: string;
+  storeNameEn: string;
+  taxNumber: string;
+  crNumber: string;
+  phone: string;
+  address: string;
+  footerNote: string;
+}
+

@@ -31,6 +31,24 @@
     --danger: #EF4444;
   }
 
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  @supports (height: 100dvh) {
+    html,
+    body,
+    #root {
+      height: 100dvh;
+    }
+  }
+
   body {
     font-family: var(--font-arabic), var(--font-latin);
     touch-action: manipulation;
@@ -57,16 +75,130 @@
   font-feature-settings: "tnum";
 }
 
-/* Print styles for Bluetooth / ESC/POS thermal printing */
+/* Print styles for Bluetooth / ESC/POS thermal printing & PDF generation */
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
+  @page {
+    size: auto;
+    margin: 0mm !important;
   }
-  .no-print {
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    min-height: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Hide everything on page by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Explicitly hide non-printable elements */
+  .no-print,
+  #eda50-left-scan-trigger,
+  #eda50-right-scan-trigger,
+  nav,
+  header {
     display: none !important;
+    visibility: hidden !important;
   }
+
+  /* Make only the printable thermal receipt and all its children visible */
+  #printable-thermal-receipt,
+  #printable-thermal-receipt * {
+    visibility: visible !important;
+    color: #000000 !important;
+    background-color: transparent !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Paper roll geometry and styling */
+  #printable-thermal-receipt {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: var(--receipt-paper-width, 80mm) !important;
+    margin: 0 auto !important;
+    padding: 2mm 3mm !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Nullify modal backdrop and borders for print */
+  #eda50-receipt-modal {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    inset: auto !important;
+  }
+
+  #eda50-receipt-modal > div {
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
   .print-only {
     display: block !important;
+    visibility: visible !important;
   }
+}
+
+
+/* Chrome 101 Compatibility: Remove "in oklab" color interpolation that breaks linear-gradient in Chrome < 111 */
+@layer utilities {
+  .bg-gradient-to-tr {
+    --tw-gradient-position: to top right !important;
+  }
+  .bg-gradient-to-tl {
+    --tw-gradient-position: to top left !important;
+  }
+  .bg-gradient-to-r {
+    --tw-gradient-position: to right !important;
+  }
+  .bg-gradient-to-l {
+    --tw-gradient-position: to left !important;
+  }
+  .bg-gradient-to-t {
+    --tw-gradient-position: to top !important;
+  }
+  .bg-gradient-to-b {
+    --tw-gradient-position: to bottom !important;
+  }
+  .bg-gradient-to-br {
+    --tw-gradient-position: to bottom right !important;
+  }
+  .bg-gradient-to-bl {
+    --tw-gradient-position: to bottom left !important;
+  }
+}
+
+/* Responsive touch scroll helper */
+.touch-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }

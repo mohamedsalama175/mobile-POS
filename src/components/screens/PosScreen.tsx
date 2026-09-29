@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 
 export const PosScreen: React.FC = () => {
-  const { language, theme, currentUser, showToast, refreshPendingCount, pendingSyncCount, isOnline, openReceipt, openScanner } = useApp();
+  const { language, theme, currentUser, showToast, refreshPendingCount, pendingSyncCount, isOnline, openReceipt, openScanner, registerScannerHandler, setHideBottomNav, printerSettings } = useApp();
   const [view, setView] = useState<'terminal' | 'history'>('terminal');
   const [sales, setSales] = useState<PosSale[]>([]);
   const isDark = theme === 'dark';
@@ -57,6 +57,11 @@ export const PosScreen: React.FC = () => {
   // Payment Bottom Sheet & AuthGate state
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
   const [isAuthGateOpen, setIsAuthGateOpen] = useState(false);
+
+  useEffect(() => {
+    setHideBottomNav(isPaymentSheetOpen);
+    return () => setHideBottomNav(false);
+  }, [isPaymentSheetOpen, setHideBottomNav]);
 
   // Selected Sale for detail view
   const [selectedSale, setSelectedSale] = useState<PosSale | null>(null);
@@ -177,20 +182,25 @@ export const PosScreen: React.FC = () => {
     );
   };
 
-  // Open Barcode Scanner with product matching callback
-  const handleScanBarcode = () => {
-    openScanner((scannedCode: string) => {
-      const trimmed = scannedCode.trim();
-      if (!trimmed) return;
-      const products = storageService.getProducts();
-      const found = products.find(p => p.code === trimmed || p.barcode === trimmed);
+  // Fast barcode scan handler for Honeywell physical scanner and camera
+  const handleProcessCode = (scannedCode: string) => {
+    const trimmed = scannedCode.trim();
+    if (!trimmed) return;
+    const products = storageService.getProducts();
+    const found = products.find(p => p.code === trimmed || p.barcode === trimmed);
 
-      if (found) {
-        const existingIdx = items.findIndex(it => it.productId === found.id);
+    if (found) {
+      setItems(prev => {
+        const existingIdx = prev.findIndex(it => it.productId === found.id);
         if (existingIdx >= 0) {
-          const updated = [...items];
-          updated[existingIdx].enteredQty += 1;
-          setItems(updated);
+          const updated = [...prev];
+          const newQty = updated[existingIdx].enteredQty + 1;
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            enteredQty: newQty,
+            lineTotal: newQty * updated[existingIdx].unitPrice
+          };
+          return updated;
         } else {
           const newLineItem: LineItem = {
             id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -210,15 +220,24 @@ export const PosScreen: React.FC = () => {
             imageUrl: found.imageUrl,
             category: found.category
           };
-          setItems(prev => [...prev, newLineItem]);
+          return [...prev, newLineItem];
         }
-        soundService.playScanSuccess();
-        showToast(isRtl ? `تمت إضافة: ${found.name}` : `Added: ${found.name}`, 'success');
-      } else {
-        soundService.playError();
-        showToast(isRtl ? `الرمز ${trimmed} غير موجود بالمخزن` : `Item ${trimmed} not found`, 'error');
-      }
-    });
+      });
+      soundService.playScanSuccess();
+      showToast(isRtl ? `تمت إضافة: ${found.name}` : `Added: ${found.name}`, 'success');
+    } else {
+      soundService.playError();
+      showToast(isRtl ? `الرمز ${trimmed} غير موجود بالمخزن` : `Item ${trimmed} not found`, 'error');
+    }
+  };
+
+  useEffect(() => {
+    return registerScannerHandler(handleProcessCode);
+  });
+
+  // Open Barcode Scanner with product matching callback
+  const handleScanBarcode = () => {
+    openScanner(handleProcessCode);
   };
 
   const filteredSales = sales.filter((s) => {
@@ -236,52 +255,73 @@ export const PosScreen: React.FC = () => {
     >
       {/* Top Header: Network / Dedicated Offline Queue Badge & View Switcher */}
       <div
-        className={`p-3 border-b flex items-center justify-between shrink-0 ${
+        className={`p-3 sm:px-6 border-b shrink-0 ${
           isDark ? 'border-[#333842] bg-[#1C1F24]' : 'border-gray-200 bg-white'
         }`}
       >
-        <div className="flex items-center gap-2">
-          {/* Universal 3-state Offline Queue Badge */}
-          <NetworkStatusBadge
-            isOnline={isOnline}
-            pendingCount={pendingSyncCount}
-            language={language}
-          />
+        <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* Universal 3-state Offline Queue Badge */}
+            <NetworkStatusBadge
+              isOnline={isOnline}
+              pendingCount={pendingSyncCount}
+              language={language}
+            />
 
-          <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {view === 'terminal'
-              ? (isRtl ? 'نقطة البيع السريع (POS)' : 'Quick POS Terminal')
-              : (isRtl ? 'سجل عمليات البيع' : 'POS Sales History')}
-          </span>
-        </div>
+            <span className={`text-xs sm:text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              {view === 'terminal'
+                ? (isRtl ? 'نقطة البيع السريع (POS)' : 'Quick POS Terminal')
+                : (isRtl ? 'سجل عمليات البيع' : 'POS Sales History')}
+            </span>
+          </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              soundService.playClick();
-              setView(view === 'terminal' ? 'history' : 'terminal');
-            }}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors min-h-[44px] ${
-              view === 'history'
-                ? 'bg-blue-600 border-blue-600 text-white'
-                : isDark
-                ? 'border-[#333842] bg-[#262A31] text-gray-300 hover:text-white'
-                : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            {view === 'terminal' ? (
-              <>
-                <History className="w-4 h-4" />
-                <span>{isRtl ? 'السجل' : 'History'}</span>
-              </>
-            ) : (
-              <>
-                <Store className="w-4 h-4" />
-                <span>{isRtl ? 'نقطة البيع' : 'Terminal'}</span>
-              </>
+          <div className="flex items-center gap-1.5">
+            {sales.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundService.playClick();
+                  openReceipt(sales[0], 'pos');
+                }}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors min-h-[44px] ${
+                  isDark
+                    ? 'border-[#333842] bg-[#262A31] text-emerald-400 hover:text-emerald-300'
+                    : 'border-gray-200 bg-gray-50 text-emerald-600 hover:bg-gray-100'
+                }`}
+                title={isRtl ? 'إعادة طباعة آخر إيصال' : 'Reprint Last Receipt'}
+              >
+                <Printer className="w-4 h-4" />
+                <span className="hidden sm:inline">{isRtl ? 'آخر إيصال' : 'Last Receipt'}</span>
+              </button>
             )}
-          </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                soundService.playClick();
+                setView(view === 'terminal' ? 'history' : 'terminal');
+              }}
+              className={`px-3.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-colors min-h-[44px] ${
+                view === 'history'
+                  ? 'bg-blue-600 border-blue-600 text-white'
+                  : isDark
+                  ? 'border-[#333842] bg-[#262A31] text-gray-300 hover:text-white'
+                  : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {view === 'terminal' ? (
+                <>
+                  <History className="w-4 h-4" />
+                  <span>{isRtl ? 'السجل' : 'History'}</span>
+                </>
+              ) : (
+                <>
+                  <Store className="w-4 h-4" />
+                  <span>{isRtl ? 'نقطة البيع' : 'Terminal'}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -290,114 +330,182 @@ export const PosScreen: React.FC = () => {
       {/* ========================================================= */}
       {view === 'terminal' ? (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
-          {/* Customer Selection Ribbon */}
-          <div
-            className={`px-3 py-2 border-b flex items-center justify-between text-xs shrink-0 ${
-              isDark ? 'bg-[#181B20] border-[#333842]' : 'bg-gray-50 border-gray-200'
-            }`}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {isRtl ? 'العميل:' : 'Customer:'}
-              </span>
-              <span className={`font-bold truncate text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                {customer.name}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowCustomerPicker(!showCustomerPicker)}
-              className="text-blue-500 hover:underline text-[11px] font-bold min-h-[44px] flex items-center"
-            >
-              {showCustomerPicker
-                ? (isRtl ? 'إغلاق' : 'Close')
-                : (isRtl ? 'تغيير العميل' : 'Change')}
-            </button>
-          </div>
-
-          {/* Customer Picker Dropdown (Collapsible) */}
-          {showCustomerPicker && (
-            <div
-              className={`p-3 border-b shadow-lg animate-in slide-in-from-top-2 duration-150 ${
-                isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200'
-              }`}
-            >
-              <CustomerPicker
-                selectedCustomer={customer}
-                onSelectCustomer={(c) => {
-                  setCustomer(c);
-                  setShowCustomerPicker(false);
-                  soundService.playClick();
-                }}
-              />
-            </div>
-          )}
-
-          {/* Action Ribbon: Barcode Scanner & Sample Items */}
-          <div
-            className={`p-2.5 border-b flex items-center justify-between gap-2 shrink-0 ${
-              isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200'
-            }`}
-          >
-            <button
-              type="button"
-              onClick={handleScanBarcode}
-              className={`flex-1 h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all min-h-[44px] ${
-                isDark
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                  : 'bg-[#252B37] hover:bg-[#1E232D] text-white shadow-sm'
-              }`}
-            >
-              <Scan className="w-4 h-4" />
-              <span>{isRtl ? 'فتح الماسح (الكاميرا)' : 'Scan Barcode'}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={loadSampleItems}
-              className={`px-3 h-11 rounded-xl border text-xs font-bold flex items-center gap-1 transition-colors min-h-[44px] ${
-                isDark
-                  ? 'border-[#333842] bg-[#262A31] text-gray-300 hover:text-white'
-                  : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
-              }`}
-              title={isRtl ? 'تحميل أصناف للتجربة' : 'Load sample items'}
-            >
-              <Package className="w-4 h-4" />
-              <span className="hidden sm:inline">{isRtl ? 'أصناف تجريبية' : 'Samples'}</span>
-            </button>
-
-            {items.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(isRtl ? 'تفريغ السلة؟' : 'Clear cart?')) {
-                    setItems([]);
-                    soundService.playClick();
-                  }
-                }}
-                className={`p-2.5 rounded-xl border text-red-500 hover:bg-red-500/10 min-h-[44px] min-w-[44px] flex items-center justify-center ${
-                  isDark ? 'border-red-500/30' : 'border-red-200'
+          <div className="max-w-7xl mx-auto w-full flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+            {/* Main Cart & Scanner Section */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              {/* Customer Selection Ribbon */}
+              <div
+                className={`px-3 sm:px-6 py-2 border-b flex items-center justify-between text-xs shrink-0 ${
+                  isDark ? 'bg-[#181B20] border-[#333842]' : 'bg-gray-50 border-gray-200'
                 }`}
-                title={isRtl ? 'تفريغ السلة' : 'Clear'}
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {isRtl ? 'العميل:' : 'Customer:'}
+                  </span>
+                  <span className={`font-bold truncate text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {customer.name}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowCustomerPicker(!showCustomerPicker)}
+                  className="text-blue-500 hover:underline text-[11px] font-bold min-h-[44px] flex items-center"
+                >
+                  {showCustomerPicker
+                    ? (isRtl ? 'إغلاق' : 'Close')
+                    : (isRtl ? 'تغيير العميل' : 'Change')}
+                </button>
+              </div>
+
+              {/* Customer Picker Dropdown (Collapsible) */}
+              {showCustomerPicker && (
+                <div
+                  className={`p-3 sm:px-6 border-b shadow-lg animate-in slide-in-from-top-2 duration-150 ${
+                    isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  <CustomerPicker
+                    selectedCustomer={customer}
+                    onSelectCustomer={(c) => {
+                      setCustomer(c);
+                      setShowCustomerPicker(false);
+                      soundService.playClick();
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Action Ribbon: Barcode Scanner & Sample Items */}
+              <div
+                className={`p-2.5 sm:px-6 border-b flex items-center justify-between gap-2 shrink-0 ${
+                  isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={handleScanBarcode}
+                  className={`flex-1 h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all min-h-[44px] ${
+                    isDark
+                      ? 'bg-blue-600 hover:bg-blue-500 text-white'
+                      : 'bg-[#252B37] hover:bg-[#1E232D] text-white shadow-sm'
+                  }`}
+                >
+                  <Scan className="w-4 h-4" />
+                  <span>{isRtl ? 'فتح الماسح (الكاميرا)' : 'Scan Barcode'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={loadSampleItems}
+                  className={`px-3.5 h-11 rounded-xl border text-xs font-bold flex items-center gap-1 transition-colors min-h-[44px] ${
+                    isDark
+                      ? 'border-[#333842] bg-[#262A31] text-gray-300 hover:text-white'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
+                  }`}
+                  title={isRtl ? 'تحميل أصناف للتجربة' : 'Load sample items'}
+                >
+                  <Package className="w-4 h-4" />
+                  <span className="hidden sm:inline">{isRtl ? 'أصناف تجريبية' : 'Samples'}</span>
+                </button>
+
+                {items.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(isRtl ? 'تفريغ السلة؟' : 'Clear cart?')) {
+                        setItems([]);
+                        soundService.playClick();
+                      }
+                    }}
+                    className={`p-2.5 rounded-xl border text-red-500 hover:bg-red-500/10 min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                      isDark ? 'border-red-500/30' : 'border-red-200'
+                    }`}
+                    title={isRtl ? 'تفريغ السلة' : 'Clear'}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Cart Items Area with Photo 2 Cards & Steppers */}
+              <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 pb-28 lg:pb-6">
+                <LineItemEditor
+                  items={items}
+                  onChangeItems={(newItems) => setItems(newItems)}
+                />
+              </div>
+            </div>
+
+            {/* Tablet & Desktop Side Checkout Panel (hidden on mobile, visible on lg:) */}
+            <div
+              className={`hidden lg:flex w-80 xl:w-96 border-s flex-col justify-between p-5 shrink-0 ${
+                isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-gray-50 border-gray-200'
+              }`}
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-inherit">
+                  <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {isRtl ? 'ملخص نقطة البيع' : 'Order Summary'}
+                  </span>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold">
+                    {items.length} {isRtl ? 'أصناف' : 'items'}
+                  </span>
+                </div>
+
+                {/* Customer card */}
+                <div className={`p-3 rounded-xl border text-xs space-y-1 ${
+                  isDark ? 'bg-[#121417] border-[#333842]' : 'bg-white border-gray-200 shadow-xs'
+                }`}>
+                  <span className="text-[10px] text-gray-500 block">{isRtl ? 'العميل المحدد:' : 'Customer:'}</span>
+                  <div className={`font-bold text-sm truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{customer.name}</div>
+                  <div className="text-gray-400 text-[11px] font-mono">{customer.phone}</div>
+                </div>
+
+                {/* Financial Summary */}
+                <div className="space-y-2 text-xs pt-2">
+                  <div className="flex justify-between text-gray-400">
+                    <span>{isRtl ? 'إجمالي الأصناف:' : 'Gross Total:'}</span>
+                    <span className="font-mono">{grossTotal.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}</span>
+                  </div>
+                  {totalDiscount > 0 && (
+                    <div className="flex justify-between text-emerald-400">
+                      <span>{isRtl ? 'الخصم:' : 'Discount:'}</span>
+                      <span className="font-mono">-{totalDiscount.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-gray-400">
+                    <span>{isRtl ? 'ضريبة القيمة المضافة (14%):' : 'VAT (14%):'}</span>
+                    <span className="font-mono">{totalTax.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}</span>
+                  </div>
+                  <div className="pt-3 border-t border-inherit flex justify-between items-baseline">
+                    <span className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{isRtl ? 'الصافي المستحق:' : 'Total Due:'}</span>
+                    <span className="font-mono font-extrabold text-2xl text-blue-500">{netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Checkout Button */}
+              <div className="pt-4">
+                <button
+                  type="button"
+                  id="pos-complete-sale-desktop-btn"
+                  onClick={openPaymentSheet}
+                  disabled={items.length === 0}
+                  className="w-full h-14 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-40 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg active:scale-98 min-h-[48px]"
+                >
+                  <Banknote className="w-5 h-5" />
+                  <span>{isRtl ? 'دفع وتحصيل' : 'Checkout & Pay'}</span>
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Cart Items Area with Photo 2 Cards & Steppers */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 pb-28">
-            <LineItemEditor
-              items={items}
-              onChangeItems={(newItems) => setItems(newItems)}
-            />
-          </div>
-
-          {/* Sticky Checkout Bar */}
+          {/* Sticky Checkout Bar for Mobile / Handheld (hidden on lg:) */}
           <div
             id="pos-terminal-checkout-bar"
-            className={`sticky bottom-0 z-20 p-3 border-t shadow-2xl flex items-center justify-between gap-3 shrink-0 ${
+            className={`lg:hidden sticky bottom-0 z-20 p-3 border-t shadow-2xl flex items-center justify-between gap-3 shrink-0 ${
               isDark ? 'bg-[#1C1F24] border-[#333842]' : 'bg-white border-gray-200'
             }`}
           >
@@ -681,60 +789,78 @@ export const PosScreen: React.FC = () => {
           )}
 
           {/* History List */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 pb-20">
-            {filteredSales.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
-                <Receipt className="w-12 h-12 opacity-30 stroke-[1.5]" />
-                <div className="font-bold text-sm">
-                  {isRtl ? 'لا توجد عمليات بيع مسجلة' : 'No POS sales recorded'}
+          <div className="flex-1 overflow-y-auto p-3 sm:p-5 pb-20">
+            <div className="max-w-7xl mx-auto w-full">
+              {filteredSales.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center text-gray-400 space-y-3">
+                  <Receipt className="w-12 h-12 opacity-30 stroke-[1.5]" />
+                  <div className="font-bold text-sm">
+                    {isRtl ? 'لا توجد عمليات بيع مسجلة' : 'No POS sales recorded'}
+                  </div>
                 </div>
-              </div>
-            ) : (
-              filteredSales.map((sale) => (
-                <div
-                  key={sale.id}
-                  onClick={() => {
-                    soundService.playClick();
-                    setSelectedSale(sale);
-                  }}
-                  className={`p-3.5 rounded-2xl border shadow-sm cursor-pointer select-none active:scale-[0.99] transition-all space-y-2 ${
-                    isDark
-                      ? 'bg-[#1C1F24] border-[#333842] hover:border-blue-500/50'
-                      : 'bg-white border-gray-200 hover:border-blue-300 shadow-sm'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-xs text-blue-500">
-                      {sale.receiptNumber}
-                    </span>
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        sale.paymentMethod === 'cash'
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-blue-500/20 text-blue-400'
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {filteredSales.map((sale) => (
+                    <div
+                      key={sale.id}
+                      onClick={() => {
+                        soundService.playClick();
+                        setSelectedSale(sale);
+                      }}
+                      className={`p-3.5 rounded-2xl border shadow-sm cursor-pointer select-none active:scale-[0.99] transition-all space-y-2 flex flex-col justify-between ${
+                        isDark
+                          ? 'bg-[#1C1F24] border-[#333842] hover:border-blue-500/50'
+                          : 'bg-white border-gray-200 hover:border-blue-300 shadow-sm'
                       }`}
                     >
-                      {sale.paymentMethod === 'cash' ? (isRtl ? 'نقدي' : 'Cash') : (isRtl ? 'بطاقة' : 'Card')}
-                    </span>
-                  </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-xs text-blue-500">
+                          {sale.receiptNumber}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            sale.paymentMethod === 'cash'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'bg-blue-500/20 text-blue-400'
+                          }`}
+                        >
+                          {sale.paymentMethod === 'cash' ? (isRtl ? 'نقدي' : 'Cash') : (isRtl ? 'بطاقة' : 'Card')}
+                        </span>
+                      </div>
 
-                  <div className="text-xs">
-                    <div className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{sale.customerName}</div>
-                    <div className="text-[11px] text-gray-500 flex justify-between mt-0.5">
-                      <span>{sale.items.length} {isRtl ? 'أصناف' : 'items'}</span>
-                      <span className="font-mono">{sale.date} • {sale.time}</span>
+                      <div className="text-xs">
+                        <div className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{sale.customerName}</div>
+                        <div className="text-[11px] text-gray-500 flex justify-between mt-0.5">
+                          <span>{sale.items.length} {isRtl ? 'أصناف' : 'items'}</span>
+                          <span className="font-mono">{sale.date} • {sale.time}</span>
+                        </div>
+                      </div>
+
+                      <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-gray-100'}`}>
+                        <span className="text-[11px] text-gray-500">{isRtl ? 'الإجمالي:' : 'Total:'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-sm text-blue-500">
+                            {sale.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              soundService.playClick();
+                              openReceipt(sale, 'pos');
+                            }}
+                            className="p-1.5 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors"
+                            title={isRtl ? 'طباعة الإيصال' : 'Print Receipt'}
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className={`pt-2 border-t flex items-center justify-between ${isDark ? 'border-[#333842]/50' : 'border-gray-100'}`}>
-                    <span className="text-[11px] text-gray-500">{isRtl ? 'الإجمالي:' : 'Total:'}</span>
-                    <span className="font-mono font-bold text-sm text-blue-500">
-                      {sale.netDue.toFixed(2)} {isRtl ? 'ج.م' : 'EGP'}
-                    </span>
-                  </div>
+                  ))}
                 </div>
-              ))
-            )}
+              )}
+            </div>
           </div>
 
           {/* Sale Detail / Reprint Modal */}

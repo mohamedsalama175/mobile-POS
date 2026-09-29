@@ -11,7 +11,16 @@ export const DeviceFrame: React.FC<DeviceFrameProps> = ({ children }) => {
   const isDark = theme === 'dark';
 
   if (!handheldMode) {
-    return <div className="min-h-screen w-full flex flex-col">{children}</div>;
+    return (
+      <div
+        className={`h-full w-full flex flex-col transition-colors ${
+          isDark ? 'bg-[#121417] text-[#F5F6F7]' : 'bg-[#F8F9FA] text-[#111827]'
+        }`}
+        style={{ height: '100dvh' }}
+      >
+        {children}
+      </div>
+    );
   }
 
   return (
